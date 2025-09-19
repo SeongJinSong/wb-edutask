@@ -28,12 +28,13 @@
 ```
 
 **요청 필드:**
+
 | 필드 | 타입 | 필수 | 설명 | 제약사항 |
 |------|------|------|------|----------|
 | `name` | String | ✅ | 회원 이름 | 최대 50자 |
-| `email` | String | ✅ | 이메일 주소 | 유효한 이메일 형식, 최대 100자 |
+| `email` | String | ✅ | 이메일 주소 | • 유효한 이메일 형식<br/>• 최대 100자 |
 | `phoneNumber` | String | ✅ | 휴대폰 번호 | 010-XXXX-XXXX 형식 |
-| `password` | String | ✅ | 비밀번호 | 6-10자, 영문 대소문자+숫자 조합 |
+| `password` | String | ✅ | 비밀번호 | • 6-10자<br/>• 영문 대소문자+숫자 조합 |
 | `memberType` | Enum | ✅ | 회원 유형 | STUDENT, INSTRUCTOR |
 
 **성공 응답 (201 Created):**
@@ -80,6 +81,7 @@ curl -X POST http://localhost:8080/api/members/register \
 회원 ID로 회원 정보를 조회합니다.
 
 **경로 변수:**
+
 | 변수 | 타입 | 설명 |
 |------|------|------|
 | `id` | Long | 회원 ID |
@@ -117,6 +119,7 @@ curl -X GET http://localhost:8080/api/members/1
 이메일로 회원 정보를 조회합니다.
 
 **경로 변수:**
+
 | 변수 | 타입 | 설명 |
 |------|------|------|
 | `email` | String | 이메일 주소 |
