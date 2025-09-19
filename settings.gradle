@@ -1,0 +1,11 @@
+rootProject.name = 'wb-edutask'
+
+// 프로젝트 정보
+gradle.settingsEvaluated { settings ->
+    println "=== WB Education Task Management System ==="
+    println "프로젝트명: ${settings.rootProject.name}"
+    println "Gradle 버전: ${gradle.gradleVersion}"
+    println "Java 버전: 21"
+    println "Spring Boot 버전: 3.3.5"
+    println "=========================================="
+}
