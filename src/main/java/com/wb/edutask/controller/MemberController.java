@@ -1,25 +1,30 @@
 package com.wb.edutask.controller;
 
+import java.util.Optional;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 import com.wb.edutask.dto.MemberRequestDto;
 import com.wb.edutask.dto.MemberResponseDto;
 import com.wb.edutask.service.MemberService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.Optional;
 
 /**
  * 회원 관리를 위한 REST API 컨트롤러
  * 
  * @author WB Development Team
  * @version 1.0.0
- * @since 2024-01-01
+ * @since 2025-09-20
  */
 @RestController
-@RequestMapping("/members")
+@RequestMapping("/api/v1/members")
 @CrossOrigin(origins = "*") // CORS 설정 (개발용)
 public class MemberController {
     

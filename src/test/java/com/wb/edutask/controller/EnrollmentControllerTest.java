@@ -33,7 +33,7 @@ import lombok.extern.slf4j.Slf4j;
  * 
  * @author WB Development Team
  * @version 1.0.0
- * @since 2024-01-01
+ * @since 2025-09-20
  */
 @SpringBootTest
 @ActiveProfiles("test")
@@ -102,7 +102,7 @@ class EnrollmentControllerTest {
         String requestJson = objectMapper.writeValueAsString(requestDto);
         
         // When & Then
-        mockMvc.perform(post("/enrollments")
+        mockMvc.perform(post("/api/v1/enrollments")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestJson))
                 .andExpect(status().isCreated())
@@ -140,7 +140,7 @@ class EnrollmentControllerTest {
         String requestJson = objectMapper.writeValueAsString(requestDto);
         
         // When & Then
-        mockMvc.perform(post("/enrollments")
+        mockMvc.perform(post("/api/v1/enrollments")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestJson))
                 .andExpect(status().isCreated())
@@ -157,7 +157,7 @@ class EnrollmentControllerTest {
         String requestJson = objectMapper.writeValueAsString(requestDto);
         
         // When & Then
-        mockMvc.perform(post("/enrollments")
+        mockMvc.perform(post("/api/v1/enrollments")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestJson))
                 .andExpect(status().isBadRequest());
@@ -171,7 +171,7 @@ class EnrollmentControllerTest {
         String requestJson = objectMapper.writeValueAsString(requestDto);
         
         // When & Then
-        mockMvc.perform(post("/enrollments")
+        mockMvc.perform(post("/api/v1/enrollments")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestJson))
                 .andExpect(status().isBadRequest());
@@ -185,7 +185,7 @@ class EnrollmentControllerTest {
         String requestJson = objectMapper.writeValueAsString(requestDto);
         
         // 수강신청 생성
-        MvcResult enrollResult = mockMvc.perform(post("/enrollments")
+        MvcResult enrollResult = mockMvc.perform(post("/api/v1/enrollments")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestJson))
                 .andExpect(status().isCreated())
@@ -195,7 +195,7 @@ class EnrollmentControllerTest {
         Long enrollmentId = objectMapper.readTree(responseJson).get("id").asLong();
         
         // When & Then
-        mockMvc.perform(get("/enrollments/{enrollmentId}", enrollmentId))
+        mockMvc.perform(get("/api/v1/enrollments/{enrollmentId}", enrollmentId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(enrollmentId))
                 .andExpect(jsonPath("$.student.id").value(student.getId()))
@@ -206,7 +206,7 @@ class EnrollmentControllerTest {
     @DisplayName("존재하지 않는 수강신청 조회 실패 테스트")
     void getEnrollment_NotFound() throws Exception {
         // When & Then
-        mockMvc.perform(get("/enrollments/{enrollmentId}", 999L))
+        mockMvc.perform(get("/api/v1/enrollments/{enrollmentId}", 999L))
                 .andExpect(status().isNotFound());
     }
     
@@ -218,13 +218,13 @@ class EnrollmentControllerTest {
         String requestJson = objectMapper.writeValueAsString(requestDto);
         
         // 수강신청 생성
-        mockMvc.perform(post("/enrollments")
+        mockMvc.perform(post("/api/v1/enrollments")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestJson))
                 .andExpect(status().isCreated());
         
         // When & Then
-        mockMvc.perform(get("/enrollments/student/{studentId}", student.getId()))
+        mockMvc.perform(get("/api/v1/enrollments/student/{studentId}", student.getId()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isArray())
                 .andExpect(jsonPath("$.content[0].student.id").value(student.getId()));
@@ -238,13 +238,13 @@ class EnrollmentControllerTest {
         String requestJson = objectMapper.writeValueAsString(requestDto);
         
         // 수강신청 생성
-        mockMvc.perform(post("/enrollments")
+        mockMvc.perform(post("/api/v1/enrollments")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestJson))
                 .andExpect(status().isCreated());
         
         // When & Then
-        mockMvc.perform(get("/enrollments/course/{courseId}", course.getId()))
+        mockMvc.perform(get("/api/v1/enrollments/course/{courseId}", course.getId()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isArray())
                 .andExpect(jsonPath("$.content[0].course.id").value(course.getId()));
@@ -258,13 +258,13 @@ class EnrollmentControllerTest {
         String requestJson = objectMapper.writeValueAsString(requestDto);
         
         // 수강신청 생성
-        mockMvc.perform(post("/enrollments")
+        mockMvc.perform(post("/api/v1/enrollments")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestJson))
                 .andExpect(status().isCreated());
         
         // When & Then
-        mockMvc.perform(get("/enrollments/status/APPROVED"))
+        mockMvc.perform(get("/api/v1/enrollments/status/APPROVED"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isArray())
                 .andExpect(jsonPath("$.content[0].status").value("APPROVED"));
@@ -278,7 +278,7 @@ class EnrollmentControllerTest {
         String requestJson = objectMapper.writeValueAsString(requestDto);
         
         // 수강신청 생성
-        MvcResult enrollResult = mockMvc.perform(post("/enrollments")
+        MvcResult enrollResult = mockMvc.perform(post("/api/v1/enrollments")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestJson))
                 .andExpect(status().isCreated())
@@ -288,7 +288,7 @@ class EnrollmentControllerTest {
         Long enrollmentId = objectMapper.readTree(responseJson).get("id").asLong();
         
         // When & Then
-        mockMvc.perform(delete("/enrollments/{enrollmentId}", enrollmentId)
+        mockMvc.perform(delete("/api/v1/enrollments/{enrollmentId}", enrollmentId)
                 .param("reason", "개인 사정으로 인한 취소"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CANCELLED"))
@@ -314,7 +314,7 @@ class EnrollmentControllerTest {
         courseRepository.save(course);
         
         // When & Then
-        mockMvc.perform(put("/enrollments/{enrollmentId}/approve", enrollment.getId()))
+        mockMvc.perform(put("/api/v1/enrollments/{enrollmentId}/approve", enrollment.getId()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("APPROVED"));
     }
@@ -330,7 +330,7 @@ class EnrollmentControllerTest {
         enrollment = enrollmentRepository.save(enrollment);
         
         // When & Then
-        mockMvc.perform(put("/enrollments/{enrollmentId}/reject", enrollment.getId())
+        mockMvc.perform(put("/api/v1/enrollments/{enrollmentId}/reject", enrollment.getId())
                 .param("reason", "정원 초과로 인한 거절"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("REJECTED"))
@@ -341,7 +341,7 @@ class EnrollmentControllerTest {
     @DisplayName("수강신청 통계 조회 성공 테스트")
     void getEnrollmentStats_Success() throws Exception {
         // When & Then
-        mockMvc.perform(get("/enrollments/stats"))
+        mockMvc.perform(get("/api/v1/enrollments/stats"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalEnrollments").exists())
                 .andExpect(jsonPath("$.approvedEnrollments").exists())
@@ -353,7 +353,7 @@ class EnrollmentControllerTest {
     @DisplayName("잘못된 수강신청 ID로 승인 시도 시 실패 테스트")
     void approveEnrollment_InvalidId() throws Exception {
         // When & Then
-        mockMvc.perform(put("/enrollments/{enrollmentId}/approve", -1L))
+        mockMvc.perform(put("/api/v1/enrollments/{enrollmentId}/approve", -1L))
                 .andExpect(status().isBadRequest());
     }
     
@@ -368,7 +368,7 @@ class EnrollmentControllerTest {
         enrollment = enrollmentRepository.save(enrollment);
         
         // When & Then
-        mockMvc.perform(put("/enrollments/{enrollmentId}/reject", enrollment.getId()))
+        mockMvc.perform(put("/api/v1/enrollments/{enrollmentId}/reject", enrollment.getId()))
                 .andExpect(status().isBadRequest());
     }
 }

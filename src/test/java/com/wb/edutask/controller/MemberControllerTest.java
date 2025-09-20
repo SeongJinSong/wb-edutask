@@ -26,7 +26,7 @@ import lombok.extern.slf4j.Slf4j;
  * 
  * @author WB Development Team
  * @version 1.0.0
- * @since 2024-01-01
+ * @since 2025-09-20
  */
 @Slf4j
 @SpringBootTest
@@ -67,7 +67,7 @@ class MemberControllerTest {
         );
 
         // When & Then
-        mockMvc.perform(post("/members/register")
+        mockMvc.perform(post("/api/v1/members/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(requestDto)))
                     .andDo(result -> {
@@ -101,7 +101,7 @@ class MemberControllerTest {
         );
 
         // When & Then
-        mockMvc.perform(post("/members/register")
+        mockMvc.perform(post("/api/v1/members/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(requestDto)))
                 .andExpect(status().isCreated())
@@ -124,7 +124,7 @@ class MemberControllerTest {
             MemberType.STUDENT
         );
         
-        mockMvc.perform(post("/members/register")
+        mockMvc.perform(post("/api/v1/members/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(existingMember)))
                 .andExpect(status().isCreated());
@@ -139,7 +139,7 @@ class MemberControllerTest {
         );
 
         // Then
-        mockMvc.perform(post("/members/register")
+        mockMvc.perform(post("/api/v1/members/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(newMember)))
                 .andExpect(status().isBadRequest())
@@ -159,7 +159,7 @@ class MemberControllerTest {
             MemberType.STUDENT
         );
         
-        mockMvc.perform(post("/members/register")
+        mockMvc.perform(post("/api/v1/members/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(existingMember)))
                 .andExpect(status().isCreated());
@@ -174,7 +174,7 @@ class MemberControllerTest {
         );
 
         // Then
-        mockMvc.perform(post("/members/register")
+        mockMvc.perform(post("/api/v1/members/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(newMember)))
                 .andExpect(status().isBadRequest())
@@ -195,7 +195,7 @@ class MemberControllerTest {
         );
 
         // When & Then
-        mockMvc.perform(post("/members/register")
+        mockMvc.perform(post("/api/v1/members/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(requestDto)))
                 .andExpect(status().isBadRequest())
@@ -217,7 +217,7 @@ class MemberControllerTest {
         );
 
         // When & Then
-        mockMvc.perform(post("/members/register")
+        mockMvc.perform(post("/api/v1/members/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(requestDto)))
                 .andExpect(status().isBadRequest())
@@ -239,7 +239,7 @@ class MemberControllerTest {
         );
 
         // When & Then
-        mockMvc.perform(post("/members/register")
+        mockMvc.perform(post("/api/v1/members/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(requestDto)))
                 .andExpect(status().isBadRequest())
@@ -260,7 +260,7 @@ class MemberControllerTest {
             MemberType.STUDENT
         );
 
-        String response = mockMvc.perform(post("/members/register")
+        String response = mockMvc.perform(post("/api/v1/members/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(requestDto)))
                 .andExpect(status().isCreated())
@@ -272,7 +272,7 @@ class MemberControllerTest {
         String memberId = objectMapper.readTree(response).get("id").asText();
 
         // When & Then - ID로 회원 조회
-        mockMvc.perform(get("/members/" + memberId))
+        mockMvc.perform(get("/api/v1/members/" + memberId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(memberId))
                 .andExpect(jsonPath("$.name").value("홍길동"))
@@ -293,13 +293,13 @@ class MemberControllerTest {
             MemberType.STUDENT
         );
 
-        mockMvc.perform(post("/members/register")
+        mockMvc.perform(post("/api/v1/members/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(requestDto)))
                 .andExpect(status().isCreated());
 
         // When & Then - 이메일로 회원 조회
-        mockMvc.perform(get("/members/email/hong@weolbu.com"))
+        mockMvc.perform(get("/api/v1/members/email/hong@weolbu.com"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("홍길동"))
                 .andExpect(jsonPath("$.email").value("hong@weolbu.com"))
@@ -311,7 +311,7 @@ class MemberControllerTest {
     @DisplayName("존재하지 않는 회원 조회 실패 테스트")
     void getMemberById_NotFound_Fail() throws Exception {
         // When & Then
-        mockMvc.perform(get("/members/999"))
+        mockMvc.perform(get("/api/v1/members/999"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error").value("회원을 찾을 수 없습니다"))
                 .andExpect(jsonPath("$.message").value("해당 ID의 회원이 존재하지 않습니다."));
@@ -321,7 +321,7 @@ class MemberControllerTest {
     @DisplayName("존재하지 않는 이메일로 회원 조회 실패 테스트")
     void getMemberByEmail_NotFound_Fail() throws Exception {
         // When & Then
-        mockMvc.perform(get("/members/email/notfound@weolbu.com"))
+        mockMvc.perform(get("/api/v1/members/email/notfound@weolbu.com"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error").value("회원을 찾을 수 없습니다"))
                 .andExpect(jsonPath("$.message").value("해당 이메일의 회원이 존재하지 않습니다."));

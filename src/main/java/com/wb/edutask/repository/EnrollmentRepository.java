@@ -17,7 +17,7 @@ import com.wb.edutask.enums.EnrollmentStatus;
  * 
  * @author WB Development Team
  * @version 1.0.0
- * @since 2024-01-01
+ * @since 2025-09-20
  */
 @Repository
 public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
