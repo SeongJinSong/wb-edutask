@@ -58,12 +58,8 @@ public class CourseController {
     public ResponseEntity<CourseResponseDto> createCourse(
             @Valid @RequestBody CourseRequestDto courseRequestDto) {
         
-        try {
-            CourseResponseDto course = courseService.createCourse(courseRequestDto);
-            return ResponseEntity.status(HttpStatus.CREATED).body(course);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().build();
-        }
+        CourseResponseDto course = courseService.createCourse(courseRequestDto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(course);
     }
     
     /**

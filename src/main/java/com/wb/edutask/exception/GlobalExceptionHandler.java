@@ -117,6 +117,21 @@ public class GlobalExceptionHandler {
     }
     
     /**
+     * 런타임 예외 처리
+     * 
+     * @param ex 런타임 예외
+     * @return 에러 응답
+     */
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<Map<String, Object>> handleRuntimeException(RuntimeException ex) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("error", "요청 처리 실패");
+        response.put("message", ex.getMessage());
+        
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+    
+    /**
      * 일반적인 예외 처리
      * 
      * @param ex 예외
