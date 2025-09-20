@@ -13,7 +13,6 @@ import com.wb.edutask.entity.Enrollment;
 import com.wb.edutask.entity.Member;
 import com.wb.edutask.enums.CourseStatus;
 import com.wb.edutask.enums.EnrollmentStatus;
-import com.wb.edutask.enums.MemberType;
 import com.wb.edutask.repository.CourseRepository;
 import com.wb.edutask.repository.EnrollmentRepository;
 import com.wb.edutask.repository.MemberRepository;
@@ -57,23 +56,19 @@ public class EnrollmentService {
      * @throws RuntimeException 유효하지 않은 요청인 경우
      */
     public EnrollmentResponseDto enrollCourse(EnrollmentRequestDto enrollmentRequestDto) {
-        // 1. 학생 정보 조회 및 검증
-        Member student = memberRepository.findById(enrollmentRequestDto.getStudentId())
-                .orElseThrow(() -> new RuntimeException("학생을 찾을 수 없습니다: " + enrollmentRequestDto.getStudentId()));
-        
-        if (student.getMemberType() != MemberType.STUDENT) {
-            throw new RuntimeException("학생만 수강신청할 수 있습니다");
-        }
+        // 1. 회원 정보 조회 및 검증
+        Member member = memberRepository.findById(enrollmentRequestDto.getStudentId())
+                .orElseThrow(() -> new RuntimeException("회원을 찾을 수 없습니다: " + enrollmentRequestDto.getStudentId()));
         
         // 2. 강의 정보 조회 및 검증
         Course course = courseRepository.findById(enrollmentRequestDto.getCourseId())
                 .orElseThrow(() -> new RuntimeException("강의를 찾을 수 없습니다: " + enrollmentRequestDto.getCourseId()));
         
         // 3. 수강신청 가능 여부 검증
-        validateEnrollment(student, course);
+        validateEnrollment(member, course);
         
         // 4. 수강신청 생성
-        Enrollment enrollment = new Enrollment(student, course);
+        Enrollment enrollment = new Enrollment(member, course);
         
         // 5. 자동 승인 처리 (정원 내인 경우)
         if (course.getCurrentStudents() < course.getMaxStudents()) {
@@ -227,13 +222,13 @@ public class EnrollmentService {
     /**
      * 수강신청 가능 여부를 검증합니다
      * 
-     * @param student 학생
+     * @param member 수강신청하는 회원 (학생 또는 강사)
      * @param course 강의
      * @throws RuntimeException 수강신청할 수 없는 경우
      */
-    private void validateEnrollment(Member student, Course course) {
+    private void validateEnrollment(Member member, Course course) {
         // 1. 중복 수강신청 확인
-        if (enrollmentRepository.existsByStudentAndCourse(student, course)) {
+        if (enrollmentRepository.existsByStudentAndCourse(member, course)) {
             throw new RuntimeException("이미 수강신청한 강의입니다");
         }
         
@@ -247,8 +242,8 @@ public class EnrollmentService {
             throw new RuntimeException("이미 시작된 강의는 수강신청할 수 없습니다");
         }
         
-        // 4. 자기 자신이 강사인 강의 확인
-        if (course.getInstructor().getId().equals(student.getId())) {
+        // 4. 자기 자신이 강사인 강의 확인 (강사도 다른 강사의 강의는 수강 가능)
+        if (course.getInstructor().getId().equals(member.getId())) {
             throw new RuntimeException("자신이 강사인 강의는 수강신청할 수 없습니다");
         }
         

@@ -1,14 +1,17 @@
 package com.wb.edutask.exception;
 
+import java.util.HashMap;
+import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-
-import java.util.HashMap;
-import java.util.Map;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
 
 /**
  * 전역 예외 처리를 위한 핸들러
@@ -55,6 +58,60 @@ public class GlobalExceptionHandler {
         Map<String, Object> response = new HashMap<>();
         response.put("error", "잘못된 요청");
         response.put("message", ex.getMessage());
+        
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+    
+    /**
+     * Constraint Violation 예외 처리 (Path Variable, Request Parameter 검증)
+     * 
+     * @param ex Constraint Violation 예외
+     * @return 에러 응답
+     */
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleConstraintViolationException(ConstraintViolationException ex) {
+        Map<String, Object> response = new HashMap<>();
+        Map<String, String> details = new HashMap<>();
+        
+        for (ConstraintViolation<?> violation : ex.getConstraintViolations()) {
+            String fieldName = violation.getPropertyPath().toString();
+            String message = violation.getMessage();
+            details.put(fieldName, message);
+        }
+        
+        response.put("error", "유효성 검증 실패");
+        response.put("message", "입력 값이 유효하지 않습니다");
+        response.put("details", details);
+        
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+    
+    /**
+     * 필수 파라미터 누락 예외 처리
+     * 
+     * @param ex 파라미터 누락 예외
+     * @return 에러 응답
+     */
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<Map<String, Object>> handleMissingServletRequestParameterException(MissingServletRequestParameterException ex) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("error", "필수 파라미터 누락");
+        response.put("message", "필수 파라미터가 누락되었습니다: " + ex.getParameterName());
+        
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+    
+    /**
+     * 타입 불일치 예외 처리
+     * 
+     * @param ex 타입 불일치 예외
+     * @return 에러 응답
+     */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<Map<String, Object>> handleMethodArgumentTypeMismatchException(MethodArgumentTypeMismatchException ex) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("error", "타입 불일치");
+        response.put("message", "파라미터 타입이 올바르지 않습니다: " + ex.getName());
         
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
