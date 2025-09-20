@@ -4,7 +4,6 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -22,6 +21,7 @@ import com.wb.edutask.enums.EnrollmentStatus;
 import com.wb.edutask.repository.CourseRepository;
 import com.wb.edutask.repository.EnrollmentRepository;
 import com.wb.edutask.repository.MemberRepository;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -34,35 +34,16 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Service
 @Transactional
+@RequiredArgsConstructor
 public class EnrollmentService {
     
     private final EnrollmentRepository enrollmentRepository;
     private final MemberRepository memberRepository;
     private final CourseRepository courseRepository;
     private final EnrollmentQueueService enrollmentQueueService;
+    private final RedisConcurrencyService redisConcurrencyService;
     private final StringRedisTemplate stringRedisTemplate;
     
-    /**
-     * EnrollmentService 생성자
-     * 
-     * @param enrollmentRepository 수강신청 Repository
-     * @param memberRepository 회원 Repository
-     * @param courseRepository 강의 Repository
-     * @param enrollmentQueueService 수강신청 큐 서비스
-     * @param stringRedisTemplate Redis 템플릿
-     */
-    @Autowired
-    public EnrollmentService(EnrollmentRepository enrollmentRepository, 
-                           MemberRepository memberRepository,
-                           CourseRepository courseRepository,
-                           EnrollmentQueueService enrollmentQueueService,
-                           StringRedisTemplate stringRedisTemplate) {
-        this.enrollmentRepository = enrollmentRepository;
-        this.memberRepository = memberRepository;
-        this.courseRepository = courseRepository;
-        this.enrollmentQueueService = enrollmentQueueService;
-        this.stringRedisTemplate = stringRedisTemplate;
-    }
     
     /**
      * 수강신청을 처리합니다 (Lua 스크립트 동기 실행)
@@ -86,7 +67,7 @@ public class EnrollmentService {
         validateEnrollmentBasic(member, course);
         
         // 2. Lua 스크립트를 통한 원자적 정원 확인 및 처리 (동기 실행)
-        Map<String, Object> luaResult = enrollmentQueueService.executeEnrollmentLuaScript(
+        Map<String, Object> luaResult = redisConcurrencyService.executeEnrollmentLuaScript(
             enrollmentRequestDto.getStudentId(), 
             enrollmentRequestDto.getCourseId()
         );
@@ -100,7 +81,7 @@ public class EnrollmentService {
         
         if (!success) {
             // Lua 스크립트에서 실패 → DB 저장하지 않음
-            String koreanMessage = convertRedisMessageToKorean(message);
+            String koreanMessage = redisConcurrencyService.convertRedisMessageToKorean(message);
             log.info("❌ Lua 실패로 DB 저장 안함 - StudentId: {}, Reason: {}", 
                     enrollmentRequestDto.getStudentId(), koreanMessage);
             throw new RuntimeException(koreanMessage);
@@ -181,7 +162,7 @@ public class EnrollmentService {
             
             if (!success) {
                 // Redis 메시지를 한국어로 변환
-                String koreanMessage = convertRedisMessageToKorean(message);
+                String koreanMessage = redisConcurrencyService.convertRedisMessageToKorean(message);
                 throw new RuntimeException(koreanMessage);
             }
             
@@ -209,7 +190,7 @@ public class EnrollmentService {
             
             // 7. Redis와 DB 동기화 (DB 상태를 Redis에 반영)
             try {
-                enrollmentQueueService.syncCourseToRedisIfNeeded(courseId);
+                redisConcurrencyService.syncCourseToRedisIfNeeded(courseId);
                 log.debug("Redis 동기화 완료 - CourseId: {}, CurrentStudents: {}", courseId, course.getCurrentStudents());
             } catch (Exception e) {
                 log.warn("Redis 동기화 실패: {}", e.getMessage());
@@ -581,7 +562,7 @@ public class EnrollmentService {
             String reason = (String) result.get("reason");
             
             if (!success) {
-                String koreanMessage = convertRedisMessageToKorean(message);
+                String koreanMessage = redisConcurrencyService.convertRedisMessageToKorean(message);
                 throw new RuntimeException(koreanMessage);
             }
             
@@ -608,38 +589,4 @@ public class EnrollmentService {
         }
     }
     
-    /**
-     * Redis 메시지를 한국어로 변환합니다
-     * 
-     * @param redisMessage Redis에서 받은 메시지
-     * @return 한국어 메시지
-     */
-    private String convertRedisMessageToKorean(String redisMessage) {
-        if (redisMessage == null) {
-            return "알 수 없는 오류가 발생했습니다";
-        }
-        
-        switch (redisMessage) {
-            case "CAPACITY_EXCEEDED":
-                return "강의 정원이 초과되었습니다";
-            case "COURSE_NOT_FOUND":
-                return "강의를 찾을 수 없습니다";
-            case "STUDENT_NOT_FOUND":
-                return "학생을 찾을 수 없습니다";
-            case "DUPLICATE_ENROLLMENT":
-                return "이미 수강신청한 강의입니다";
-            case "INSTRUCTOR_SELF_ENROLLMENT":
-                return "강사는 자신의 강의에 수강신청할 수 없습니다";
-            case "COURSE_NOT_AVAILABLE":
-                return "수강신청 가능한 강의가 아닙니다";
-            case "COURSE_STARTED":
-                return "이미 시작된 강의입니다";
-            case "NO_STUDENTS_TO_DECREASE":
-                return "수강 인원을 감소시킬 수 없습니다";
-            case "CANCEL_FAILED":
-                return "취소 처리에 실패했습니다";
-            default:
-                return "수강신청 실패: " + redisMessage;
-        }
-    }
 }

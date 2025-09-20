@@ -92,10 +92,12 @@ class ConcurrencyTest {
         limitedCourse = courseRepository.save(limitedCourse);
         
         // Redis에서 강의 정보 미리 동기화 (테스트 안정성을 위해)
-        stringRedisTemplate.opsForHash().put("course:" + limitedCourse.getId(), "currentStudents", "0");
-        stringRedisTemplate.opsForHash().put("course:" + limitedCourse.getId(), "maxStudents", "5");
-        stringRedisTemplate.opsForHash().put("course:" + limitedCourse.getId(), "courseId", limitedCourse.getId().toString());
-        stringRedisTemplate.opsForHash().put("course:" + limitedCourse.getId(), "courseName", "인기 강의");
+        String courseKey = "course:" + limitedCourse.getId();
+        stringRedisTemplate.opsForHash().put(courseKey, "currentStudents", "0");
+        stringRedisTemplate.opsForHash().put(courseKey, "maxStudents", "5");
+        stringRedisTemplate.opsForHash().put(courseKey, "courseId", limitedCourse.getId().toString());
+        stringRedisTemplate.opsForHash().put(courseKey, "courseName", "인기 강의");
+        stringRedisTemplate.expire(courseKey, 1, java.util.concurrent.TimeUnit.MINUTES);
         
         // 학생 10명 생성 (정원보다 많음)
         students = new ArrayList<>();
