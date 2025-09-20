@@ -1,7 +1,15 @@
 package com.wb.edutask.dto;
 
-import com.wb.edutask.entity.MemberType;
-import jakarta.validation.constraints.*;
+import com.wb.edutask.enums.MemberType;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 /**
  * 회원 가입 요청을 위한 DTO
@@ -10,6 +18,10 @@ import jakarta.validation.constraints.*;
  * @version 1.0.0
  * @since 2024-01-01
  */
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class MemberRequestDto {
     
     @NotBlank(message = "이름은 필수입니다")
@@ -33,67 +45,4 @@ public class MemberRequestDto {
     
     @NotNull(message = "회원 유형은 필수입니다")
     private MemberType memberType;
-    
-    // 기본 생성자
-    public MemberRequestDto() {}
-    
-    // 생성자
-    public MemberRequestDto(String name, String email, String phoneNumber, String password, MemberType memberType) {
-        this.name = name;
-        this.email = email;
-        this.phoneNumber = phoneNumber;
-        this.password = password;
-        this.memberType = memberType;
-    }
-    
-    // Getter와 Setter
-    public String getName() {
-        return name;
-    }
-    
-    public void setName(String name) {
-        this.name = name;
-    }
-    
-    public String getEmail() {
-        return email;
-    }
-    
-    public void setEmail(String email) {
-        this.email = email;
-    }
-    
-    public String getPhoneNumber() {
-        return phoneNumber;
-    }
-    
-    public void setPhoneNumber(String phoneNumber) {
-        this.phoneNumber = phoneNumber;
-    }
-    
-    public String getPassword() {
-        return password;
-    }
-    
-    public void setPassword(String password) {
-        this.password = password;
-    }
-    
-    public MemberType getMemberType() {
-        return memberType;
-    }
-    
-    public void setMemberType(MemberType memberType) {
-        this.memberType = memberType;
-    }
-    
-    @Override
-    public String toString() {
-        return "MemberRequestDto{" +
-                "name='" + name + '\'' +
-                ", email='" + email + '\'' +
-                ", phoneNumber='" + phoneNumber + '\'' +
-                ", memberType=" + memberType +
-                '}';
-    }
 }

@@ -1,10 +1,8 @@
 package com.wb.edutask.service;
 
-import com.wb.edutask.dto.MemberRequestDto;
-import com.wb.edutask.dto.MemberResponseDto;
-import com.wb.edutask.entity.Member;
-import com.wb.edutask.entity.MemberType;
-import com.wb.edutask.repository.MemberRepository;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -12,10 +10,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.*;
+import com.wb.edutask.dto.MemberRequestDto;
+import com.wb.edutask.dto.MemberResponseDto;
+import com.wb.edutask.entity.Member;
+import com.wb.edutask.enums.MemberType;
+import com.wb.edutask.repository.MemberRepository;
 
 /**
  * 회원 서비스 테스트 클래스

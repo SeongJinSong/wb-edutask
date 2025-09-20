@@ -1,10 +1,9 @@
 package com.wb.edutask.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.wb.edutask.dto.MemberRequestDto;
-import com.wb.edutask.entity.MemberType;
-import com.wb.edutask.repository.MemberRepository;
-import lombok.extern.slf4j.Slf4j;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,11 +15,11 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.WebApplicationContext;
-
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.wb.edutask.dto.MemberRequestDto;
+import com.wb.edutask.enums.MemberType;
+import com.wb.edutask.repository.MemberRepository;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * 회원 관리 API 테스트 클래스
