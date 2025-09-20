@@ -49,6 +49,7 @@ public class Course {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
+    
     /**
      * 강의명 (필수, 최대 100자)
      */

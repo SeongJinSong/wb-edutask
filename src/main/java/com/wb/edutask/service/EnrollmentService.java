@@ -53,7 +53,7 @@ public class EnrollmentService {
     }
     
     /**
-     * 수강신청을 처리합니다
+     * 수강신청을 처리합니다 (Redis + DB 원자적 업데이트로 동시성 제어)
      * 
      * @param enrollmentRequestDto 수강신청 요청 정보
      * @return 생성된 수강신청 정보
@@ -68,20 +68,23 @@ public class EnrollmentService {
         Course course = courseRepository.findById(enrollmentRequestDto.getCourseId())
                 .orElseThrow(() -> new RuntimeException("강의를 찾을 수 없습니다: " + enrollmentRequestDto.getCourseId()));
         
-        // 3. 수강신청 가능 여부 검증
-        validateEnrollment(member, course);
+        // 3. 수강신청 가능 여부 검증 (정원 제외)
+        validateEnrollmentBasic(member, course);
         
         // 4. 수강신청 생성
         Enrollment enrollment = new Enrollment(member, course);
         
-        // 5. 자동 승인 처리 (정원 내인 경우)
-        if (course.getCurrentStudents() < course.getMaxStudents()) {
-            enrollment.approve();
-            course.increaseCurrentStudents();
-            courseRepository.save(course);
+        // 5. DB 원자적 업데이트로 정원 확인 및 증가
+        int updatedRows = courseRepository.incrementCurrentStudents(course.getId());
+        if (updatedRows == 0) {
+            // 정원 초과 시 대기 상태로 유지
+            throw new RuntimeException("강의 정원이 초과되었습니다");
         }
         
-        // 6. 수강신청 저장
+        // 6. 자동 승인 처리
+        enrollment.approve();
+        
+        // 7. 수강신청 저장
         Enrollment savedEnrollment = enrollmentRepository.save(enrollment);
         
         return EnrollmentResponseDto.from(savedEnrollment);
@@ -224,13 +227,13 @@ public class EnrollmentService {
     }
     
     /**
-     * 수강신청 가능 여부를 검증합니다
+     * 수강신청 가능 여부를 검증합니다 (정원 제외)
      * 
      * @param member 수강신청하는 회원 (학생 또는 강사)
      * @param course 강의
      * @throws RuntimeException 수강신청할 수 없는 경우
      */
-    private void validateEnrollment(Member member, Course course) {
+    private void validateEnrollmentBasic(Member member, Course course) {
         // 1. 중복 수강신청 확인
         if (enrollmentRepository.existsByStudentAndCourse(member, course)) {
             throw new RuntimeException("이미 수강신청한 강의입니다");
@@ -251,10 +254,7 @@ public class EnrollmentService {
             throw new RuntimeException("자신이 강사인 강의는 수강신청할 수 없습니다");
         }
         
-        // 5. 정원 확인 (대기열 없이 바로 거절)
-        if (course.getCurrentStudents() >= course.getMaxStudents()) {
-            throw new RuntimeException("강의 정원이 초과되었습니다");
-        }
+        // 5. 정원 확인은 DB 원자적 업데이트에서 처리
     }
     
     /**

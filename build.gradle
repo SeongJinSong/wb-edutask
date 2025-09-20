@@ -26,6 +26,9 @@ repositories {
     mavenCentral()
 }
 
+// 의존성 버전 관리 (BOM 방식)
+// Spring Boot BOM이 버전 관리를 수행하므로 별도의 Netty BOM은 사용하지 않습니다
+
 dependencies {
     // Spring Boot Web Starter
     implementation 'org.springframework.boot:spring-boot-starter-web'
@@ -35,6 +38,12 @@ dependencies {
     
     // Spring Boot Validation Starter
     implementation 'org.springframework.boot:spring-boot-starter-validation'
+    
+    // Spring Data Redis + Jedis 클라이언트 (Netty 의존성 회피)
+    implementation('org.springframework.boot:spring-boot-starter-data-redis') {
+        exclude group: 'io.lettuce', module: 'lettuce-core'
+    }
+    implementation 'redis.clients:jedis:5.1.5'
     
     // H2 Database (런타임)
     runtimeOnly 'com.h2database:h2'

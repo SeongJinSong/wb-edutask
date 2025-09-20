@@ -91,7 +91,26 @@ wb-edutask/
 ./gradlew clean build
 ```
 
-### 3. 애플리케이션 실행
+### 3. Redis (Docker) 준비
+
+이 프로젝트는 Redis를 사용합니다. 로컬에서는 Docker로 Redis를 실행하세요.
+
+```bash
+# 1) Docker 설치 (미설치 시)
+# - macOS: https://docs.docker.com/desktop/install/mac-install/
+# - Windows: https://docs.docker.com/desktop/install/windows-install/
+
+# 2) Redis 컨테이너 실행 (포그라운드 없이 백그라운드 실행)
+docker-compose up -d
+
+# 상태 확인
+docker ps
+docker exec wb-edutask-redis redis-cli ping   # PONG 이 출력되면 정상
+```
+
+Redis는 기본적으로 `localhost:6379`에서 실행되며, 애플리케이션 설정은 `src/main/resources/application.yml`에 반영되어 있습니다.
+
+### 4. 애플리케이션 실행
 
 ```bash
 # Gradle을 통한 실행
@@ -101,7 +120,7 @@ wb-edutask/
 java -jar build/libs/wb-edutask-1.0.0.jar
 ```
 
-### 4. 애플리케이션 접속
+### 5. 애플리케이션 접속
 
 - **애플리케이션**: http://localhost:8080/api
 - **H2 콘솔**: http://localhost:8080/api/h2-console

@@ -48,27 +48,35 @@ spring:
       indent-output: true
     deserialization:
       fail-on-unknown-properties: false
+  
+  # Redis 설정 (Docker Redis 사용)
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: 
+      timeout: 2000ms
+      client-type: jedis
 
 # 로깅 설정
 logging:
   level:
-    com.wb.edutask: DEBUG
-    org.springframework.web: INFO
-    org.hibernate.SQL: DEBUG
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    com.wb.edutask: INFO
+    org.springframework.data.redis: INFO
+    org.springframework.scheduling: INFO
+    org.hibernate.SQL: WARN
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
-    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
 
 # 관리 엔드포인트 설정
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,redis
   endpoint:
     health:
-      show-details: when-authorized
+      show-details: always
 
 # 애플리케이션 정보
 info:
