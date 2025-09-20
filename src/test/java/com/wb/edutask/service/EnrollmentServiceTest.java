@@ -5,11 +5,16 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 import com.wb.edutask.dto.BulkEnrollmentRequestDto;
@@ -25,6 +30,7 @@ import com.wb.edutask.enums.MemberType;
 import com.wb.edutask.repository.CourseRepository;
 import com.wb.edutask.repository.EnrollmentRepository;
 import com.wb.edutask.repository.MemberRepository;
+import jakarta.persistence.EntityManager;
 
 /**
  * EnrollmentService 테스트 클래스
@@ -36,6 +42,8 @@ import com.wb.edutask.repository.MemberRepository;
 @SpringBootTest
 @ActiveProfiles("test")
 @Transactional
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
+@TestMethodOrder(OrderAnnotation.class)
 class EnrollmentServiceTest {
     
     @Autowired
@@ -50,17 +58,30 @@ class EnrollmentServiceTest {
     @Autowired
     private EnrollmentRepository enrollmentRepository;
     
+    @Autowired
+    private StringRedisTemplate stringRedisTemplate;
+    
+    @Autowired
+    private EntityManager entityManager;
+    
     private Member student;
     private Member instructor;
     private Course course;
     
     @BeforeEach
     void setUp() {
+        // Redis 초기화 (테스트 간 격리를 위해)
+        stringRedisTemplate.getConnectionFactory().getConnection().flushAll();
+        
+        // 고유한 데이터 생성을 위한 타임스탬프 사용
+        long timestamp = System.currentTimeMillis();
+        String uniqueId = String.format("%05d", timestamp % 100000); // 5자리 숫자 (앞에 0 패딩)
+        
         // 학생 생성
         student = new Member(
-            "김학생", 
-            "student@test.com", 
-            "010-1234-5678", 
+            "김학생" + uniqueId, 
+            "student" + uniqueId + "@test.com", 
+            "010-" + uniqueId.substring(0, 4) + "-" + uniqueId.substring(1, 5), 
             "Pass123", 
             MemberType.STUDENT
         );
@@ -68,9 +89,9 @@ class EnrollmentServiceTest {
         
         // 강사 생성
         instructor = new Member(
-            "이강사", 
-            "instructor@test.com", 
-            "010-9876-5432", 
+            "이강사" + uniqueId, 
+            "instructor" + uniqueId + "@test.com", 
+            "010-" + uniqueId.substring(1, 5) + "-" + uniqueId.substring(0, 4), 
             "Pass456", 
             MemberType.INSTRUCTOR
         );
@@ -78,7 +99,7 @@ class EnrollmentServiceTest {
         
         // 강의 생성
         course = new Course(
-            "Java 프로그래밍", 
+            "Java 프로그래밍" + uniqueId, 
             "Java 기초부터 심화까지", 
             instructor, 
             10, 
@@ -86,6 +107,18 @@ class EnrollmentServiceTest {
             LocalDate.now().plusDays(37)
         );
         course = courseRepository.save(course);
+    }
+    
+    @AfterEach
+    void tearDown() {
+        // Redis 데이터 정리
+        try {
+            if (stringRedisTemplate != null) {
+                stringRedisTemplate.getConnectionFactory().getConnection().flushAll();
+            }
+        } catch (Exception e) {
+            // Redis 연결 실패 시 무시 (테스트 환경에서 Redis가 없을 수 있음)
+        }
     }
     
     @Test
@@ -103,7 +136,8 @@ class EnrollmentServiceTest {
         assertThat(responseDto.getCourse().getId()).isEqualTo(course.getId());
         assertThat(responseDto.getStatus()).isEqualTo(EnrollmentStatus.APPROVED);
         
-        // 강의 수강 인원 증가 확인
+        // 강의 수강 인원 증가 확인 (EntityManager로 1차 캐시 초기화 후 조회)
+        entityManager.clear();
         Course updatedCourse = courseRepository.findById(course.getId()).orElseThrow();
         assertThat(updatedCourse.getCurrentStudents()).isEqualTo(1);
     }
@@ -502,9 +536,15 @@ class EnrollmentServiceTest {
         List<Long> courseIds = Arrays.asList(course.getId());
         BulkEnrollmentRequestDto requestDto = new BulkEnrollmentRequestDto(999L, courseIds);
         
-        // When & Then
-        assertThatThrownBy(() -> enrollmentService.enrollMultipleCourses(requestDto))
-            .isInstanceOf(RuntimeException.class)
-            .hasMessageContaining("회원을 찾을 수 없습니다");
+        // When
+        BulkEnrollmentResponseDto result = enrollmentService.enrollMultipleCourses(requestDto);
+        
+        // Then
+        assertThat(result.getSuccessfulEnrollments()).isEmpty();
+        assertThat(result.getFailedEnrollments()).hasSize(1);
+        assertThat(result.getFailedEnrollments().get(0).getReason())
+            .contains("회원을 찾을 수 없습니다");
+        assertThat(result.getSuccessCount()).isEqualTo(0);
+        assertThat(result.getFailureCount()).isEqualTo(1);
     }
 }

@@ -1,6 +1,7 @@
 package com.wb.edutask.dto;
 
 import java.time.LocalDateTime;
+import com.wb.edutask.entity.Course;
 import com.wb.edutask.entity.Enrollment;
 import com.wb.edutask.enums.EnrollmentStatus;
 import lombok.Getter;
@@ -91,6 +92,28 @@ public class EnrollmentResponseDto {
     }
     
     /**
+     * Enrollment 엔티티와 업데이트된 Course 엔티티로부터 DTO를 생성합니다
+     * 
+     * @param enrollment Enrollment 엔티티
+     * @param course 업데이트된 Course 엔티티
+     * @return EnrollmentResponseDto
+     */
+    public static EnrollmentResponseDto from(Enrollment enrollment, Course course) {
+        EnrollmentResponseDto dto = new EnrollmentResponseDto();
+        dto.id = enrollment.getId();
+        dto.student = StudentInfo.from(enrollment.getStudent());
+        dto.course = CourseInfo.from(course);
+        dto.status = enrollment.getStatus();
+        dto.statusDescription = enrollment.getStatus().getDescription();
+        dto.appliedAt = enrollment.getAppliedAt();
+        dto.approvedAt = enrollment.getApprovedAt();
+        dto.cancelledAt = enrollment.getCancelledAt();
+        dto.reason = enrollment.getReason();
+        dto.updatedAt = enrollment.getUpdatedAt();
+        return dto;
+    }
+    
+    /**
      * 학생 정보를 나타내는 내부 클래스
      */
     @Getter
@@ -126,6 +149,7 @@ public class EnrollmentResponseDto {
         private Long id;
         private String courseName;
         private String instructorName;
+        private Integer currentStudents;
         
         /**
          * Course 엔티티로부터 CourseInfo를 생성합니다
@@ -138,6 +162,7 @@ public class EnrollmentResponseDto {
             info.id = course.getId();
             info.courseName = course.getCourseName();
             info.instructorName = course.getInstructor().getName();
+            info.currentStudents = course.getCurrentStudents();
             return info;
         }
     }

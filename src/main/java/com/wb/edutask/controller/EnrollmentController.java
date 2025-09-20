@@ -356,4 +356,54 @@ public class EnrollmentController {
         
         return ResponseEntity.ok(status);
     }
+    
+    /**
+     * Redis Queue에서 순차적으로 DB INSERT를 처리합니다 (H2 락 문제 해결)
+     * 
+     * @return 처리 결과
+     */
+    @PostMapping("/queue/process")
+    public ResponseEntity<Map<String, Object>> processDbQueue() {
+        try {
+            int processedCount = enrollmentService.processDbQueue();
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("processedCount", processedCount);
+            response.put("message", "DB 큐 처리가 완료되었습니다");
+            response.put("status", "SUCCESS");
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", e.getMessage());
+            errorResponse.put("status", "ERROR");
+            
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+    }
+    
+    /**
+     * DB 큐 상태를 조회합니다
+     * 
+     * @return DB 큐 상태
+     */
+    @GetMapping("/queue/db/status")
+    public ResponseEntity<Map<String, Object>> getDbQueueStatus() {
+        try {
+            Map<String, Object> status = new HashMap<>();
+            status.put("dbQueueSize", enrollmentQueueService.getDbQueueSize());
+            status.put("totalQueueSize", enrollmentQueueService.getTotalQueueSize());
+            status.put("message", "DB 큐 상태 조회 완료");
+            
+            return ResponseEntity.ok(status);
+            
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", e.getMessage());
+            errorResponse.put("status", "ERROR");
+            
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+    }
 }

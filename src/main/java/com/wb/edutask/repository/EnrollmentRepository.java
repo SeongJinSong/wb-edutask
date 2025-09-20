@@ -59,6 +59,16 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
     boolean existsByStudentIdAndCourseId(Long studentId, Long courseId);
     
     /**
+     * 학생 ID, 강의 ID, 상태로 수강신청 존재 여부를 확인합니다
+     * 
+     * @param studentId 학생 ID
+     * @param courseId 강의 ID
+     * @param status 수강신청 상태
+     * @return 존재 여부
+     */
+    boolean existsByStudentIdAndCourseIdAndStatus(Long studentId, Long courseId, EnrollmentStatus status);
+    
+    /**
      * 학생별 수강신청 목록을 조회합니다
      * 
      * @param student 학생

@@ -16,7 +16,7 @@ spring:
   # H2 데이터베이스 설정
   datasource:
     driver-class-name: org.h2.Driver
-    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;LOCK_TIMEOUT=10000;LOCK_MODE=0
     username: sa
     password: 
   
@@ -39,6 +39,10 @@ spring:
         format_sql: true
         dialect: org.hibernate.dialect.H2Dialect
         use_sql_comments: true
+        # 락 타임아웃 설정 (10초)
+        jdbc.lock_timeout: 10000
+        # 낙관적 락 사용
+        jdbc.batch_versioned_data: true
     open-in-view: false
   
   # Jackson JSON 설정
@@ -57,12 +61,18 @@ spring:
       password: 
       timeout: 2000ms
       client-type: jedis
+      jedis:
+        pool:
+          max-active: 200    # 최대 연결 수 더 증가
+          max-idle: 100      # 최대 유휴 연결 수 더 증가
+          min-idle: 50       # 최소 유휴 연결 수 더 증가
+          max-wait: 5000ms   # 연결 대기 시간 더 증가
 
 # 로깅 설정
 logging:
   level:
-    com.wb.edutask: INFO
-    org.springframework.data.redis: INFO
+    com.wb.edutask: DEBUG
+    org.springframework.data.redis: DEBUG
     org.springframework.scheduling: INFO
     org.hibernate.SQL: WARN
   pattern:

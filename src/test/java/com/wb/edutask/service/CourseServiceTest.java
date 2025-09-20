@@ -8,6 +8,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 import com.wb.edutask.dto.CourseRequestDto;
@@ -31,6 +32,7 @@ import lombok.extern.slf4j.Slf4j;
 @SpringBootTest
 @ActiveProfiles("test")
 @Transactional
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 class CourseServiceTest {
     
     @Autowired
@@ -47,11 +49,15 @@ class CourseServiceTest {
     
     @BeforeEach
     void setUp() {
+        // 고유한 이메일과 휴대폰 번호를 위해 타임스탬프 사용
+        String timestamp = String.valueOf(System.currentTimeMillis());
+        String phoneSuffix = timestamp.substring(timestamp.length() - 4); // 마지막 4자리 사용
+        
         // 강사 회원 생성
         instructor = new Member(
             "김강사", 
-            "instructor@test.com", 
-            "010-1234-5678", 
+            "instructor" + timestamp + "@test.com", 
+            "010-1234-" + phoneSuffix, 
             "Pass123", 
             MemberType.INSTRUCTOR
         );
@@ -60,8 +66,8 @@ class CourseServiceTest {
         // 수강생 회원 생성
         student = new Member(
             "홍학생", 
-            "student@test.com", 
-            "010-9876-5432", 
+            "student" + timestamp + "@test.com", 
+            "010-9876-" + phoneSuffix, 
             "Pass456", 
             MemberType.STUDENT
         );

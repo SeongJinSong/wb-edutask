@@ -65,6 +65,12 @@ dependencies {
     // Testcontainers JUnit Jupiter
     testImplementation 'org.testcontainers:junit-jupiter'
     
+    // 테스트용 Redis 의존성 추가
+    testImplementation('org.springframework.boot:spring-boot-starter-data-redis') {
+        exclude group: 'io.lettuce', module: 'lettuce-core'
+    }
+    testImplementation 'redis.clients:jedis:5.1.5'
+    
     // Lombok (선택사항 - 코드 간소화)
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
@@ -74,6 +80,16 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+    
+    // 테스트 실행시 동기 모드 강제 설정
+    // systemProperty 'wb.enrollment.sync', 'true'
+    
+    // 테스트 격리를 위한 설정
+    forkEvery = 1
+    maxParallelForks = 1
+    
+    // 테스트 타임아웃 설정 (60초)
+    timeout = java.time.Duration.ofSeconds(60)
 }
 
 // Gradle Wrapper 설정
