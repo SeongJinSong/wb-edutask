@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.wb.edutask.dto.BulkEnrollmentRequestDto;
+import com.wb.edutask.dto.BulkEnrollmentResponseDto;
 import com.wb.edutask.dto.EnrollmentRequestDto;
 import com.wb.edutask.dto.EnrollmentResponseDto;
 import com.wb.edutask.enums.EnrollmentStatus;
@@ -245,5 +247,19 @@ public class EnrollmentController {
         public void setCancelledEnrollments(long cancelledEnrollments) {
             this.cancelledEnrollments = cancelledEnrollments;
         }
+    }
+    
+    /**
+     * 여러 강의에 동시 수강신청을 처리합니다
+     * 
+     * @param bulkRequestDto 여러 강의 수강신청 요청 정보
+     * @return 수강신청 결과 (성공/실패 목록 포함)
+     */
+    @PostMapping("/bulk")
+    public ResponseEntity<BulkEnrollmentResponseDto> enrollMultipleCourses(
+            @Valid @RequestBody BulkEnrollmentRequestDto bulkRequestDto) {
+        
+        BulkEnrollmentResponseDto result = enrollmentService.enrollMultipleCourses(bulkRequestDto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 }

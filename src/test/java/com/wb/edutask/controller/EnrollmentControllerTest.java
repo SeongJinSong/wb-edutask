@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import java.time.LocalDate;
+import java.util.Arrays;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -20,6 +21,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.WebApplicationContext;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.wb.edutask.dto.BulkEnrollmentRequestDto;
 import com.wb.edutask.dto.EnrollmentRequestDto;
 import com.wb.edutask.entity.Course;
 import com.wb.edutask.entity.Member;
@@ -369,6 +371,97 @@ class EnrollmentControllerTest {
         
         // When & Then
         mockMvc.perform(put("/api/v1/enrollments/{enrollmentId}/reject", enrollment.getId()))
+                .andExpect(status().isBadRequest());
+    }
+    
+    @Test
+    @DisplayName("여러 강의 동시 수강신청 성공 테스트")
+    void enrollMultipleCourses_Success() throws Exception {
+        // Given
+        // 추가 강의 생성
+        Course course2 = new Course(
+            "Python 프로그래밍", 
+            "Python 기초부터 심화까지", 
+            instructor, 
+            20, 
+            LocalDate.now().plusDays(15), 
+            LocalDate.now().plusDays(45)
+        );
+        course2 = courseRepository.save(course2);
+        
+        BulkEnrollmentRequestDto requestDto = new BulkEnrollmentRequestDto(
+            student.getId(), 
+            Arrays.asList(course.getId(), course2.getId())
+        );
+        String requestJson = objectMapper.writeValueAsString(requestDto);
+        
+        // When & Then
+        mockMvc.perform(post("/api/v1/enrollments/bulk")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestJson))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.studentId").value(student.getId()))
+                .andExpect(jsonPath("$.totalRequested").value(2))
+                .andExpect(jsonPath("$.successCount").value(2))
+                .andExpect(jsonPath("$.failureCount").value(0))
+                .andExpect(jsonPath("$.successfulEnrollments").isArray())
+                .andExpect(jsonPath("$.successfulEnrollments.length()").value(2))
+                .andExpect(jsonPath("$.failedEnrollments").isArray())
+                .andExpect(jsonPath("$.failedEnrollments.length()").value(0));
+    }
+    
+    @Test
+    @DisplayName("여러 강의 동시 수강신청 부분 실패 테스트")
+    void enrollMultipleCourses_PartialFailure() throws Exception {
+        // Given
+        // 정원이 1명인 강의 생성하고 이미 가득 채우기 (실패할 강의)
+        Course fullCourse = new Course(
+            "정원 초과 강의", 
+            "정원이 가득 찬 강의", 
+            instructor, 
+            1, // 정원 1명
+            LocalDate.now().plusDays(10), 
+            LocalDate.now().plusDays(40)
+        );
+        fullCourse.increaseCurrentStudents(); // 정원을 가득 채움
+        fullCourse = courseRepository.save(fullCourse);
+        
+        BulkEnrollmentRequestDto requestDto = new BulkEnrollmentRequestDto(
+            student.getId(), 
+            Arrays.asList(course.getId(), fullCourse.getId())
+        );
+        String requestJson = objectMapper.writeValueAsString(requestDto);
+        
+        // When & Then
+        mockMvc.perform(post("/api/v1/enrollments/bulk")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestJson))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.studentId").value(student.getId()))
+                .andExpect(jsonPath("$.totalRequested").value(2))
+                .andExpect(jsonPath("$.successCount").value(1))
+                .andExpect(jsonPath("$.failureCount").value(1))
+                .andExpect(jsonPath("$.successfulEnrollments.length()").value(1))
+                .andExpect(jsonPath("$.failedEnrollments.length()").value(1))
+                .andExpect(jsonPath("$.failedEnrollments[0].courseId").value(fullCourse.getId()))
+                .andExpect(jsonPath("$.failedEnrollments[0].courseName").value("정원 초과 강의"))
+                .andExpect(jsonPath("$.failedEnrollments[0].reason").exists());
+    }
+    
+    @Test
+    @DisplayName("잘못된 요청 데이터로 여러 강의 수강신청 실패 테스트")
+    void enrollMultipleCourses_InvalidRequest() throws Exception {
+        // Given - 빈 강의 목록
+        BulkEnrollmentRequestDto requestDto = new BulkEnrollmentRequestDto(
+            student.getId(), 
+            Arrays.asList()
+        );
+        String requestJson = objectMapper.writeValueAsString(requestDto);
+        
+        // When & Then
+        mockMvc.perform(post("/api/v1/enrollments/bulk")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestJson))
                 .andExpect(status().isBadRequest());
     }
 }

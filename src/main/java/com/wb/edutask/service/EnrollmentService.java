@@ -1,11 +1,15 @@
 package com.wb.edutask.service;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.wb.edutask.dto.BulkEnrollmentRequestDto;
+import com.wb.edutask.dto.BulkEnrollmentResponseDto;
 import com.wb.edutask.dto.EnrollmentRequestDto;
 import com.wb.edutask.dto.EnrollmentResponseDto;
 import com.wb.edutask.entity.Course;
@@ -251,5 +255,74 @@ public class EnrollmentService {
         if (course.getCurrentStudents() >= course.getMaxStudents()) {
             throw new RuntimeException("강의 정원이 초과되었습니다");
         }
+    }
+    
+    /**
+     * 여러 강의에 동시 수강신청을 처리합니다
+     * 일부 강의가 실패해도 나머지 강의는 계속 처리됩니다
+     * 
+     * @param bulkRequestDto 여러 강의 수강신청 요청 정보
+     * @return 수강신청 결과 (성공/실패 목록 포함)
+     */
+    @Transactional
+    public BulkEnrollmentResponseDto enrollMultipleCourses(BulkEnrollmentRequestDto bulkRequestDto) {
+        List<EnrollmentResponseDto> successfulEnrollments = new ArrayList<>();
+        List<BulkEnrollmentResponseDto.EnrollmentFailureDto> failedEnrollments = new ArrayList<>();
+        
+        // 학생 정보 조회 (한 번만 조회)
+        Member member = memberRepository.findById(bulkRequestDto.getStudentId())
+                .orElseThrow(() -> new RuntimeException("회원을 찾을 수 없습니다: " + bulkRequestDto.getStudentId()));
+        
+        // 각 강의에 대해 개별적으로 수강신청 처리
+        for (Long courseId : bulkRequestDto.getCourseIds()) {
+            try {
+                // 개별 수강신청 DTO 생성
+                EnrollmentRequestDto individualRequest = new EnrollmentRequestDto(
+                    bulkRequestDto.getStudentId(), 
+                    courseId
+                );
+                
+                // 개별 수강신청 처리
+                EnrollmentResponseDto enrollment = enrollCourse(individualRequest);
+                successfulEnrollments.add(enrollment);
+                
+            } catch (RuntimeException e) {
+                // 실패한 경우 강의 정보를 조회하여 실패 목록에 추가
+                try {
+                    Course course = courseRepository.findById(courseId)
+                            .orElse(null);
+                    
+                    String courseName = course != null ? course.getCourseName() : "알 수 없는 강의";
+                    
+                    BulkEnrollmentResponseDto.EnrollmentFailureDto failure = 
+                        new BulkEnrollmentResponseDto.EnrollmentFailureDto(
+                            courseId, 
+                            courseName, 
+                            e.getMessage()
+                        );
+                    failedEnrollments.add(failure);
+                    
+                } catch (Exception ex) {
+                    // 강의 조회도 실패한 경우
+                    BulkEnrollmentResponseDto.EnrollmentFailureDto failure = 
+                        new BulkEnrollmentResponseDto.EnrollmentFailureDto(
+                            courseId, 
+                            "알 수 없는 강의", 
+                            e.getMessage()
+                        );
+                    failedEnrollments.add(failure);
+                }
+            }
+        }
+        
+        // 결과 DTO 생성
+        return new BulkEnrollmentResponseDto(
+            bulkRequestDto.getStudentId(),
+            bulkRequestDto.getCourseIds().size(),
+            successfulEnrollments.size(),
+            failedEnrollments.size(),
+            successfulEnrollments,
+            failedEnrollments
+        );
     }
 }

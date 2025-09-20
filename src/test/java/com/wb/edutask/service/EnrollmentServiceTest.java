@@ -3,6 +3,8 @@ package com.wb.edutask.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.time.LocalDate;
+import java.util.Arrays;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -10,6 +12,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
+import com.wb.edutask.dto.BulkEnrollmentRequestDto;
+import com.wb.edutask.dto.BulkEnrollmentResponseDto;
 import com.wb.edutask.dto.EnrollmentRequestDto;
 import com.wb.edutask.dto.EnrollmentResponseDto;
 import com.wb.edutask.entity.Course;
@@ -356,5 +360,151 @@ class EnrollmentServiceTest {
         assertThatThrownBy(() -> enrollmentService.getEnrollmentById(999L))
             .isInstanceOf(RuntimeException.class)
             .hasMessageContaining("수강신청을 찾을 수 없습니다");
+    }
+    
+    @Test
+    @DisplayName("여러 강의 동시 수강신청 성공 테스트")
+    void enrollMultipleCourses_AllSuccess() {
+        // Given
+        // 추가 강의 생성
+        Course course2 = new Course(
+            "Python 프로그래밍", 
+            "Python 기초부터 심화까지", 
+            instructor, 
+            20, 
+            LocalDate.now().plusDays(15), 
+            LocalDate.now().plusDays(45)
+        );
+        course2 = courseRepository.save(course2);
+        
+        Course course3 = new Course(
+            "JavaScript 프로그래밍", 
+            "JavaScript 기초부터 심화까지", 
+            instructor, 
+            15, 
+            LocalDate.now().plusDays(20), 
+            LocalDate.now().plusDays(50)
+        );
+        course3 = courseRepository.save(course3);
+        
+        List<Long> courseIds = Arrays.asList(course.getId(), course2.getId(), course3.getId());
+        BulkEnrollmentRequestDto requestDto = new BulkEnrollmentRequestDto(student.getId(), courseIds);
+        
+        // When
+        BulkEnrollmentResponseDto responseDto = enrollmentService.enrollMultipleCourses(requestDto);
+        
+        // Then
+        assertThat(responseDto).isNotNull();
+        assertThat(responseDto.getStudentId()).isEqualTo(student.getId());
+        assertThat(responseDto.getTotalRequested()).isEqualTo(3);
+        assertThat(responseDto.getSuccessCount()).isEqualTo(3);
+        assertThat(responseDto.getFailureCount()).isEqualTo(0);
+        assertThat(responseDto.getSuccessfulEnrollments()).hasSize(3);
+        assertThat(responseDto.getFailedEnrollments()).isEmpty();
+    }
+    
+    @Test
+    @DisplayName("여러 강의 동시 수강신청 부분 실패 테스트")
+    void enrollMultipleCourses_PartialFailure() {
+        // Given
+        // 정원이 1명인 강의 생성하고 이미 가득 채우기 (실패할 강의)
+        Course fullCourse = new Course(
+            "정원 초과 강의", 
+            "정원이 가득 찬 강의", 
+            instructor, 
+            1, // 정원 1명
+            LocalDate.now().plusDays(10), 
+            LocalDate.now().plusDays(40)
+        );
+        fullCourse.increaseCurrentStudents(); // 정원을 가득 채움
+        fullCourse = courseRepository.save(fullCourse);
+        
+        // 성공할 강의
+        Course availableCourse = new Course(
+            "수강 가능 강의", 
+            "수강 가능한 강의", 
+            instructor, 
+            20, 
+            LocalDate.now().plusDays(15), 
+            LocalDate.now().plusDays(45)
+        );
+        availableCourse = courseRepository.save(availableCourse);
+        
+        List<Long> courseIds = Arrays.asList(fullCourse.getId(), availableCourse.getId());
+        BulkEnrollmentRequestDto requestDto = new BulkEnrollmentRequestDto(student.getId(), courseIds);
+        
+        // When
+        BulkEnrollmentResponseDto responseDto = enrollmentService.enrollMultipleCourses(requestDto);
+        
+        // Then
+        assertThat(responseDto).isNotNull();
+        assertThat(responseDto.getStudentId()).isEqualTo(student.getId());
+        assertThat(responseDto.getTotalRequested()).isEqualTo(2);
+        assertThat(responseDto.getSuccessCount()).isEqualTo(1);
+        assertThat(responseDto.getFailureCount()).isEqualTo(1);
+        assertThat(responseDto.getSuccessfulEnrollments()).hasSize(1);
+        assertThat(responseDto.getFailedEnrollments()).hasSize(1);
+        
+        // 실패한 수강신청 정보 확인
+        BulkEnrollmentResponseDto.EnrollmentFailureDto failure = responseDto.getFailedEnrollments().get(0);
+        assertThat(failure.getCourseId()).isEqualTo(fullCourse.getId());
+        assertThat(failure.getCourseName()).isEqualTo("정원 초과 강의");
+        assertThat(failure.getReason()).contains("강의 정원이 초과되었습니다");
+    }
+    
+    @Test
+    @DisplayName("여러 강의 동시 수강신청 모두 실패 테스트")
+    void enrollMultipleCourses_AllFailure() {
+        // Given
+        // 이미 시작된 강의 (실패할 강의)
+        Course startedCourse = new Course(
+            "이미 시작된 강의", 
+            "이미 시작된 강의", 
+            instructor, 
+            20, 
+            LocalDate.now().minusDays(1), // 어제 시작
+            LocalDate.now().plusDays(30)
+        );
+        startedCourse = courseRepository.save(startedCourse);
+        
+        // 정원 초과 강의 (실패할 강의)
+        Course fullCourse = new Course(
+            "정원 초과 강의", 
+            "정원이 가득 찬 강의", 
+            instructor, 
+            1, // 정원 1명
+            LocalDate.now().plusDays(10), 
+            LocalDate.now().plusDays(40)
+        );
+        fullCourse.increaseCurrentStudents(); // 정원을 가득 채움
+        fullCourse = courseRepository.save(fullCourse);
+        
+        List<Long> courseIds = Arrays.asList(startedCourse.getId(), fullCourse.getId());
+        BulkEnrollmentRequestDto requestDto = new BulkEnrollmentRequestDto(student.getId(), courseIds);
+        
+        // When
+        BulkEnrollmentResponseDto responseDto = enrollmentService.enrollMultipleCourses(requestDto);
+        
+        // Then
+        assertThat(responseDto).isNotNull();
+        assertThat(responseDto.getStudentId()).isEqualTo(student.getId());
+        assertThat(responseDto.getTotalRequested()).isEqualTo(2);
+        assertThat(responseDto.getSuccessCount()).isEqualTo(0);
+        assertThat(responseDto.getFailureCount()).isEqualTo(2);
+        assertThat(responseDto.getSuccessfulEnrollments()).isEmpty();
+        assertThat(responseDto.getFailedEnrollments()).hasSize(2);
+    }
+    
+    @Test
+    @DisplayName("존재하지 않는 학생 ID로 여러 강의 수강신청 실패 테스트")
+    void enrollMultipleCourses_StudentNotFound() {
+        // Given
+        List<Long> courseIds = Arrays.asList(course.getId());
+        BulkEnrollmentRequestDto requestDto = new BulkEnrollmentRequestDto(999L, courseIds);
+        
+        // When & Then
+        assertThatThrownBy(() -> enrollmentService.enrollMultipleCourses(requestDto))
+            .isInstanceOf(RuntimeException.class)
+            .hasMessageContaining("회원을 찾을 수 없습니다");
     }
 }
