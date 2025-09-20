@@ -98,14 +98,14 @@ class EnrollmentServiceTest {
         instructor = memberRepository.save(instructor);
         
         // 강의 생성
-        course = new Course(
-            "Java 프로그래밍" + uniqueId, 
-            "Java 기초부터 심화까지", 
-            instructor, 
-            10, 
-            LocalDate.now().plusDays(7), 
-            LocalDate.now().plusDays(37)
-        );
+        course = Course.builder()
+                .courseName("Java 프로그래밍" + uniqueId)
+                .description("Java 기초부터 심화까지")
+                .instructor(instructor)
+                .maxStudents(10)
+                .startDate(LocalDate.now().plusDays(7))
+                .endDate(LocalDate.now().plusDays(37))
+                .build();
         course = courseRepository.save(course);
     }
     
@@ -136,10 +136,9 @@ class EnrollmentServiceTest {
         assertThat(responseDto.getCourse().getId()).isEqualTo(course.getId());
         assertThat(responseDto.getStatus()).isEqualTo(EnrollmentStatus.APPROVED);
         
-        // 강의 수강 인원 증가 확인 (EntityManager로 1차 캐시 초기화 후 조회)
-        entityManager.clear();
-        Course updatedCourse = courseRepository.findById(course.getId()).orElseThrow();
-        assertThat(updatedCourse.getCurrentStudents()).isEqualTo(1);
+        // 실제 DB에서 수강신청 수 확인
+        long actualEnrollments = enrollmentRepository.countActiveEnrollmentsByCourse(course.getId());
+        assertThat(actualEnrollments).isEqualTo(1);
     }
     
     @Test
@@ -181,14 +180,14 @@ class EnrollmentServiceTest {
         otherInstructor = memberRepository.save(otherInstructor);
         
         // 다른 강사의 강의 생성
-        Course otherCourse = new Course(
-            "Python 프로그래밍", 
-            "Python 기초부터 심화까지", 
-            otherInstructor, 
-            15, 
-            LocalDate.now().plusDays(10), 
-            LocalDate.now().plusDays(40)
-        );
+        Course otherCourse = Course.builder()
+                .courseName("Python 프로그래밍")
+                .description("Python 기초부터 심화까지")
+                .instructor(otherInstructor)
+                .maxStudents(15)
+                .startDate(LocalDate.now().plusDays(10))
+                .endDate(LocalDate.now().plusDays(40))
+                .build();
         otherCourse = courseRepository.save(otherCourse);
         
         EnrollmentRequestDto requestDto = new EnrollmentRequestDto(instructor.getId(), otherCourse.getId());
@@ -258,10 +257,29 @@ class EnrollmentServiceTest {
     }
     
     @Test
-    @DisplayName("진행 중인 강의 수강신청 실패 테스트")
+    @DisplayName("진행 중인 강의 수강신청 성공 테스트")
     void enrollCourse_CourseInProgress() {
         // Given
         course.setStatus(CourseStatus.IN_PROGRESS);
+        courseRepository.save(course);
+        
+        EnrollmentRequestDto requestDto = new EnrollmentRequestDto(student.getId(), course.getId());
+        
+        // When
+        EnrollmentResponseDto responseDto = enrollmentService.enrollCourse(requestDto);
+        
+        // Then
+        assertThat(responseDto).isNotNull();
+        assertThat(responseDto.getStudent().getId()).isEqualTo(student.getId());
+        assertThat(responseDto.getCourse().getId()).isEqualTo(course.getId());
+        assertThat(responseDto.getStatus()).isEqualTo(EnrollmentStatus.APPROVED);
+    }
+    
+    @Test
+    @DisplayName("종료된 강의 수강신청 실패 테스트")
+    void enrollCourse_CourseCompleted() {
+        // Given
+        course.setStatus(CourseStatus.COMPLETED);
         courseRepository.save(course);
         
         EnrollmentRequestDto requestDto = new EnrollmentRequestDto(student.getId(), course.getId());
@@ -272,20 +290,6 @@ class EnrollmentServiceTest {
             .hasMessageContaining("수강신청할 수 없는 강의 상태입니다");
     }
     
-    @Test
-    @DisplayName("이미 시작된 강의 수강신청 실패 테스트")
-    void enrollCourse_CourseAlreadyStarted() {
-        // Given
-        course.setStartDate(LocalDate.now().minusDays(1)); // 어제 시작
-        courseRepository.save(course);
-        
-        EnrollmentRequestDto requestDto = new EnrollmentRequestDto(student.getId(), course.getId());
-        
-        // When & Then
-        assertThatThrownBy(() -> enrollmentService.enrollCourse(requestDto))
-            .isInstanceOf(RuntimeException.class)
-            .hasMessageContaining("이미 시작된 강의는 수강신청할 수 없습니다");
-    }
     
     @Test
     @DisplayName("수강신청 취소 성공 테스트")
@@ -303,9 +307,9 @@ class EnrollmentServiceTest {
         assertThat(cancelledEnrollment.getStatus()).isEqualTo(EnrollmentStatus.CANCELLED);
         assertThat(cancelledEnrollment.getReason()).isEqualTo("개인 사정으로 인한 취소");
         
-        // 강의 수강 인원 감소 확인
-        Course updatedCourse = courseRepository.findById(course.getId()).orElseThrow();
-        assertThat(updatedCourse.getCurrentStudents()).isEqualTo(0);
+        // 실제 DB에서 활성 수강신청 수 확인 (취소되어 0이어야 함)
+        long activeEnrollments = enrollmentRepository.countActiveEnrollmentsByCourse(course.getId());
+        assertThat(activeEnrollments).isEqualTo(0);
     }
     
     @Test
@@ -326,9 +330,8 @@ class EnrollmentServiceTest {
     @DisplayName("수강신청 승인 성공 테스트")
     void approveEnrollment_Success() {
         // Given
-        // 정원을 초과하도록 설정하여 자동 승인되지 않게 함
+        // 정원을 0으로 설정하여 자동 승인되지 않게 함
         course.setMaxStudents(0);
-        course.setCurrentStudents(0);
         courseRepository.save(course);
         
         // 수동으로 수강신청 생성 (자동 승인 방지)
@@ -346,9 +349,9 @@ class EnrollmentServiceTest {
         assertThat(approvedEnrollment.getStatus()).isEqualTo(EnrollmentStatus.APPROVED);
         assertThat(approvedEnrollment.getApprovedAt()).isNotNull();
         
-        // 강의 수강 인원 증가 확인
-        Course updatedCourse = courseRepository.findById(course.getId()).orElseThrow();
-        assertThat(updatedCourse.getCurrentStudents()).isEqualTo(1);
+        // 실제 DB에서 승인된 수강신청 수 확인
+        long approvedEnrollments = enrollmentRepository.countActiveEnrollmentsByCourse(course.getId());
+        assertThat(approvedEnrollments).isEqualTo(1);
     }
     
     @Test
@@ -401,24 +404,24 @@ class EnrollmentServiceTest {
     void enrollMultipleCourses_AllSuccess() {
         // Given
         // 추가 강의 생성
-        Course course2 = new Course(
-            "Python 프로그래밍", 
-            "Python 기초부터 심화까지", 
-            instructor, 
-            20, 
-            LocalDate.now().plusDays(15), 
-            LocalDate.now().plusDays(45)
-        );
+        Course course2 = Course.builder()
+                .courseName("Python 프로그래밍")
+                .description("Python 기초부터 심화까지")
+                .instructor(instructor)
+                .maxStudents(20)
+                .startDate(LocalDate.now().plusDays(15))
+                .endDate(LocalDate.now().plusDays(45))
+                .build();
         course2 = courseRepository.save(course2);
         
-        Course course3 = new Course(
-            "JavaScript 프로그래밍", 
-            "JavaScript 기초부터 심화까지", 
-            instructor, 
-            15, 
-            LocalDate.now().plusDays(20), 
-            LocalDate.now().plusDays(50)
-        );
+        Course course3 = Course.builder()
+                .courseName("JavaScript 프로그래밍")
+                .description("JavaScript 기초부터 심화까지")
+                .instructor(instructor)
+                .maxStudents(15)
+                .startDate(LocalDate.now().plusDays(20))
+                .endDate(LocalDate.now().plusDays(50))
+                .build();
         course3 = courseRepository.save(course3);
         
         List<Long> courseIds = Arrays.asList(course.getId(), course2.getId(), course3.getId());
@@ -442,26 +445,37 @@ class EnrollmentServiceTest {
     void enrollMultipleCourses_PartialFailure() {
         // Given
         // 정원이 1명인 강의 생성하고 이미 가득 채우기 (실패할 강의)
-        Course fullCourse = new Course(
-            "정원 초과 강의", 
-            "정원이 가득 찬 강의", 
-            instructor, 
-            1, // 정원 1명
-            LocalDate.now().plusDays(10), 
-            LocalDate.now().plusDays(40)
-        );
-        fullCourse.increaseCurrentStudents(); // 정원을 가득 채움
-        fullCourse = courseRepository.save(fullCourse);
+        Course fullCourse = Course.builder()
+                .courseName("정원 초과 강의")
+                .description("정원이 가득 찬 강의")
+                .instructor(instructor)
+                .maxStudents(1) // 정원 1명
+                .startDate(LocalDate.now().plusDays(10))
+                .endDate(LocalDate.now().plusDays(40))
+                .build();
+        fullCourse = courseRepository.save(fullCourse); // Course를 먼저 저장
+        // 정원을 가득 채우기 위해 더미 학생과 수강신청 생성
+        Member dummyStudent = Member.builder()
+                .name("더미학생")
+                .email("dummy@test.com")
+                .password("Pass123!")
+                .phoneNumber("010-9999-9999")
+                .memberType(MemberType.STUDENT)
+                .build();
+        dummyStudent = memberRepository.save(dummyStudent);
+        Enrollment dummyEnrollment1 = new Enrollment(dummyStudent, fullCourse);
+        dummyEnrollment1.approve();
+        enrollmentRepository.save(dummyEnrollment1);
         
         // 성공할 강의
-        Course availableCourse = new Course(
-            "수강 가능 강의", 
-            "수강 가능한 강의", 
-            instructor, 
-            20, 
-            LocalDate.now().plusDays(15), 
-            LocalDate.now().plusDays(45)
-        );
+        Course availableCourse = Course.builder()
+                .courseName("수강 가능 강의")
+                .description("수강 가능한 강의")
+                .instructor(instructor)
+                .maxStudents(20)
+                .startDate(LocalDate.now().plusDays(15))
+                .endDate(LocalDate.now().plusDays(45))
+                .build();
         availableCourse = courseRepository.save(availableCourse);
         
         List<Long> courseIds = Arrays.asList(fullCourse.getId(), availableCourse.getId());
@@ -490,30 +504,42 @@ class EnrollmentServiceTest {
     @DisplayName("여러 강의 동시 수강신청 모두 실패 테스트")
     void enrollMultipleCourses_AllFailure() {
         // Given
-        // 이미 시작된 강의 (실패할 강의)
-        Course startedCourse = new Course(
-            "이미 시작된 강의", 
-            "이미 시작된 강의", 
-            instructor, 
-            20, 
-            LocalDate.now().minusDays(1), // 어제 시작
-            LocalDate.now().plusDays(30)
-        );
-        startedCourse = courseRepository.save(startedCourse);
+        // 종료된 강의 (실패할 강의)
+        Course completedCourse = Course.builder()
+                .courseName("종료된 강의")
+                .description("종료된 강의")
+                .instructor(instructor)
+                .maxStudents(20)
+                .startDate(LocalDate.now().minusDays(30))
+                .endDate(LocalDate.now().minusDays(1))
+                .build();
+        completedCourse.setStatus(CourseStatus.COMPLETED); // 종료 상태로 변경
+        completedCourse = courseRepository.save(completedCourse);
         
         // 정원 초과 강의 (실패할 강의)
-        Course fullCourse = new Course(
-            "정원 초과 강의", 
-            "정원이 가득 찬 강의", 
-            instructor, 
-            1, // 정원 1명
-            LocalDate.now().plusDays(10), 
-            LocalDate.now().plusDays(40)
-        );
-        fullCourse.increaseCurrentStudents(); // 정원을 가득 채움
-        fullCourse = courseRepository.save(fullCourse);
+        Course fullCourse = Course.builder()
+                .courseName("정원 초과 강의")
+                .description("정원이 가득 찬 강의")
+                .instructor(instructor)
+                .maxStudents(1) // 정원 1명
+                .startDate(LocalDate.now().plusDays(10))
+                .endDate(LocalDate.now().plusDays(40))
+                .build();
+        fullCourse = courseRepository.save(fullCourse); // Course를 먼저 저장
+        // 정원을 가득 채우기 위해 더미 학생과 수강신청 생성
+        Member dummyStudent2 = Member.builder()
+                .name("더미학생2")
+                .email("dummy2@test.com")
+                .password("Pass123!")
+                .phoneNumber("010-9999-9998")
+                .memberType(MemberType.STUDENT)
+                .build();
+        dummyStudent2 = memberRepository.save(dummyStudent2);
+        Enrollment dummyEnrollment2 = new Enrollment(dummyStudent2, fullCourse);
+        dummyEnrollment2.approve();
+        enrollmentRepository.save(dummyEnrollment2);
         
-        List<Long> courseIds = Arrays.asList(startedCourse.getId(), fullCourse.getId());
+        List<Long> courseIds = Arrays.asList(completedCourse.getId(), fullCourse.getId());
         BulkEnrollmentRequestDto requestDto = new BulkEnrollmentRequestDto(student.getId(), courseIds);
         
         // When

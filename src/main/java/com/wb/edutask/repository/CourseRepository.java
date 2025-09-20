@@ -5,7 +5,6 @@ import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -81,7 +80,7 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
      * @param pageable 페이징 정보
      * @return 강의 목록
      */
-    @Query("SELECT c FROM Course c WHERE c.currentStudents < c.maxStudents AND c.status = 'SCHEDULED'")
+    @Query("SELECT c FROM Course c WHERE c.status IN ('SCHEDULED', 'IN_PROGRESS')")
     Page<Course> findAvailableCoursesForEnrollment(Pageable pageable);
     
     /**
@@ -116,27 +115,6 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
      * 
      * @return 수강 신청 가능한 강의 개수
      */
-    @Query("SELECT COUNT(c) FROM Course c WHERE c.currentStudents < c.maxStudents AND c.status = 'SCHEDULED'")
+    @Query("SELECT COUNT(c) FROM Course c WHERE c.status IN ('SCHEDULED', 'IN_PROGRESS')")
     long countAvailableCoursesForEnrollment();
-    
-    /**
-     * 강의의 현재 수강생 수를 원자적으로 증가시킵니다
-     * 정원 초과 시 업데이트되지 않습니다
-     * 
-     * @param courseId 강의 ID
-     * @return 업데이트된 행 수 (1: 성공, 0: 정원 초과)
-     */
-    @Modifying
-    @Query("UPDATE Course c SET c.currentStudents = c.currentStudents + 1 WHERE c.id = :courseId AND c.currentStudents < c.maxStudents")
-    int incrementCurrentStudents(@Param("courseId") Long courseId);
-    
-    /**
-     * 강의의 현재 수강생 수를 원자적으로 감소시킵니다
-     * 
-     * @param courseId 강의 ID
-     * @return 업데이트된 행 수
-     */
-    @Modifying
-    @Query("UPDATE Course c SET c.currentStudents = c.currentStudents - 1 WHERE c.id = :courseId AND c.currentStudents > 0")
-    int decrementCurrentStudents(@Param("courseId") Long courseId);
 }

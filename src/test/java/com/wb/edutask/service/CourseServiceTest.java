@@ -96,7 +96,7 @@ class CourseServiceTest {
         assertThat(responseDto.getDescription()).isEqualTo("Java 기초부터 심화까지");
         assertThat(responseDto.getInstructor().getId()).isEqualTo(instructor.getId());
         assertThat(responseDto.getMaxStudents()).isEqualTo(20);
-        assertThat(responseDto.getCurrentStudents()).isEqualTo(0);
+        // currentStudents 필드는 제거됨 - 실시간 DB 조회로 대체
         assertThat(responseDto.getStatus()).isEqualTo(CourseStatus.SCHEDULED);
     }
     

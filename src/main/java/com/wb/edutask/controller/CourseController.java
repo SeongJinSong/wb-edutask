@@ -1,6 +1,5 @@
 package com.wb.edutask.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -23,6 +22,7 @@ import com.wb.edutask.enums.CourseStatus;
 import com.wb.edutask.service.CourseService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
+import lombok.RequiredArgsConstructor;
 
 /**
  * 강의 관리를 위한 REST API 컨트롤러
@@ -34,19 +34,11 @@ import jakarta.validation.constraints.Positive;
 @RestController
 @RequestMapping("/api/v1/courses")
 @Validated
+@RequiredArgsConstructor
 public class CourseController {
     
     private final CourseService courseService;
     
-    /**
-     * CourseController 생성자
-     * 
-     * @param courseService 강의 서비스
-     */
-    @Autowired
-    public CourseController(CourseService courseService) {
-        this.courseService = courseService;
-    }
     
     /**
      * 새로운 강의를 생성합니다

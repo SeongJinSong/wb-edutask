@@ -108,7 +108,7 @@ class CourseControllerTest {
                 .andExpect(jsonPath("$.description").value("Java 기초부터 심화까지"))
                 .andExpect(jsonPath("$.instructor.id").value(instructor.getId()))
                 .andExpect(jsonPath("$.maxStudents").value(20))
-                .andExpect(jsonPath("$.currentStudents").value(0))
+                // currentStudents 필드는 제거됨
                 .andExpect(jsonPath("$.status").value("SCHEDULED"));
     }
     

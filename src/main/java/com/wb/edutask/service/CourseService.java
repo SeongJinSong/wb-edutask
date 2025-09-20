@@ -1,7 +1,6 @@
 package com.wb.edutask.service;
 
 import java.time.LocalDate;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -13,7 +12,9 @@ import com.wb.edutask.entity.Member;
 import com.wb.edutask.enums.CourseStatus;
 import com.wb.edutask.enums.MemberType;
 import com.wb.edutask.repository.CourseRepository;
+import com.wb.edutask.repository.EnrollmentRepository;
 import com.wb.edutask.repository.MemberRepository;
+import lombok.RequiredArgsConstructor;
 
 /**
  * 강의 관리를 위한 서비스 클래스
@@ -24,22 +25,13 @@ import com.wb.edutask.repository.MemberRepository;
  */
 @Service
 @Transactional
+@RequiredArgsConstructor
 public class CourseService {
     
     private final CourseRepository courseRepository;
     private final MemberRepository memberRepository;
+    private final EnrollmentRepository enrollmentRepository;
     
-    /**
-     * CourseService 생성자
-     * 
-     * @param courseRepository 강의 Repository
-     * @param memberRepository 회원 Repository
-     */
-    @Autowired
-    public CourseService(CourseRepository courseRepository, MemberRepository memberRepository) {
-        this.courseRepository = courseRepository;
-        this.memberRepository = memberRepository;
-    }
     
     /**
      * 새로운 강의를 생성합니다
@@ -214,8 +206,9 @@ public class CourseService {
         Course course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new RuntimeException("강의를 찾을 수 없습니다: " + courseId));
         
-        // 수강생이 있는 경우 삭제 불가
-        if (course.getCurrentStudents() > 0) {
+        // 수강생이 있는 경우 삭제 불가 (실시간 DB 조회)
+        long activeEnrollments = enrollmentRepository.countActiveEnrollmentsByCourse(courseId);
+        if (activeEnrollments > 0) {
             throw new RuntimeException("수강생이 있는 강의는 삭제할 수 없습니다");
         }
         

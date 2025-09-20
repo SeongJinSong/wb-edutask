@@ -1,14 +1,13 @@
 package com.wb.edutask.service;
 
+import java.util.Optional;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import com.wb.edutask.dto.MemberRequestDto;
 import com.wb.edutask.dto.MemberResponseDto;
 import com.wb.edutask.entity.Member;
 import com.wb.edutask.repository.MemberRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.Optional;
+import lombok.RequiredArgsConstructor;
 
 /**
  * 회원 관리를 위한 서비스 클래스
@@ -19,14 +18,11 @@ import java.util.Optional;
  */
 @Service
 @Transactional
+@RequiredArgsConstructor
 public class MemberService {
     
     private final MemberRepository memberRepository;
     
-    @Autowired
-    public MemberService(MemberRepository memberRepository) {
-        this.memberRepository = memberRepository;
-    }
     
     /**
      * 회원을 등록합니다

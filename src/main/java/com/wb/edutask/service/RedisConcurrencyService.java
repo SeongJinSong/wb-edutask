@@ -10,6 +10,7 @@ import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 import com.wb.edutask.entity.Course;
 import com.wb.edutask.repository.CourseRepository;
+import com.wb.edutask.repository.EnrollmentRepository;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +33,7 @@ public class RedisConcurrencyService {
     
     private final StringRedisTemplate stringRedisTemplate;
     private final CourseRepository courseRepository;
+    private final EnrollmentRepository enrollmentRepository;
     
     // Lua Script: 정원 확인 + 수강생 수 증가 (원자적 처리)
     private static final String ENROLLMENT_SCRIPT = """
@@ -93,10 +95,13 @@ public class RedisConcurrencyService {
             
             if (existingCurrentStudents == null) {
                 // Redis에 데이터가 없을 때만 DB에서 동기화
+                // 실제 DB에서 현재 수강생 수 조회
+                long actualCurrentStudents = enrollmentRepository.countActiveEnrollmentsByCourse(courseId);
+                
                 Map<String, String> courseData = new HashMap<>();
                 courseData.put("courseId", courseId.toString());
                 courseData.put("courseName", course.getCourseName());
-                courseData.put("currentStudents", course.getCurrentStudents().toString());
+                courseData.put("currentStudents", String.valueOf(actualCurrentStudents));
                 courseData.put("maxStudents", course.getMaxStudents().toString());
                 courseData.put("instructorId", course.getInstructor().getId().toString());
                 
@@ -104,7 +109,7 @@ public class RedisConcurrencyService {
                 // 강의 정보에 TTL 설정 (6시간)
                 stringRedisTemplate.expire(courseKey, COURSE_CACHE_TTL_HOURS, TimeUnit.HOURS);
                 log.debug("강의 정보 Redis 동기화 완료: {} (currentStudents: {}, maxStudents: {}, TTL: {}시간)", 
-                        courseId, course.getCurrentStudents(), course.getMaxStudents(), COURSE_CACHE_TTL_HOURS);
+                        courseId, actualCurrentStudents, course.getMaxStudents(), COURSE_CACHE_TTL_HOURS);
             } else {
                 log.debug("Redis에 강의 정보가 이미 존재함 - CourseId: {}, CurrentStudents: {}", 
                         courseId, existingCurrentStudents);

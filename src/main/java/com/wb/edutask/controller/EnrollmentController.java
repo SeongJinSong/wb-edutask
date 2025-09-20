@@ -2,7 +2,6 @@ package com.wb.edutask.controller;
 
 import java.util.HashMap;
 import java.util.Map;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -24,11 +23,11 @@ import com.wb.edutask.dto.BulkEnrollmentResponseDto;
 import com.wb.edutask.dto.EnrollmentRequestDto;
 import com.wb.edutask.dto.EnrollmentResponseDto;
 import com.wb.edutask.enums.EnrollmentStatus;
-import com.wb.edutask.service.EnrollmentQueueService;
 import com.wb.edutask.service.EnrollmentService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
+import lombok.RequiredArgsConstructor;
 
 /**
  * 수강신청 관리를 위한 REST API 컨트롤러
@@ -40,23 +39,11 @@ import jakarta.validation.constraints.Positive;
 @RestController
 @RequestMapping("/api/v1/enrollments")
 @Validated
+@RequiredArgsConstructor
 public class EnrollmentController {
     
     private final EnrollmentService enrollmentService;
-    private final EnrollmentQueueService enrollmentQueueService;
     
-    /**
-     * EnrollmentController 생성자
-     * 
-     * @param enrollmentService 수강신청 서비스
-     * @param enrollmentQueueService 수강신청 큐 서비스
-     */
-    @Autowired
-    public EnrollmentController(EnrollmentService enrollmentService, 
-                              EnrollmentQueueService enrollmentQueueService) {
-        this.enrollmentService = enrollmentService;
-        this.enrollmentQueueService = enrollmentQueueService;
-    }
     
     /**
      * 수강신청을 처리합니다
@@ -270,109 +257,32 @@ public class EnrollmentController {
         return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
     
+    
+    // ==================== 비동기 처리 API (멀티서버 환경 대응) ====================
+    
     /**
-     * 큐 기반 수강신청을 요청합니다 (대용량 트래픽 대응)
+     * 비동기 수강신청 (멀티서버 환경 대응)
+     * Lua 스크립트로 동시성 제어 후 즉시 DB 저장
      * 
      * @param enrollmentRequestDto 수강신청 요청 정보
-     * @return 큐 ID와 상태 정보
+     * @return 수강신청 응답 (비동기 처리 시작 확인)
      */
-    @PostMapping("/queue")
-    public ResponseEntity<Map<String, Object>> enrollCourseWithQueue(
+    @PostMapping("/async")
+    public ResponseEntity<Map<String, Object>> enrollCourseAsync(
             @Valid @RequestBody EnrollmentRequestDto enrollmentRequestDto) {
         
-        String queueId = enrollmentQueueService.enqueueEnrollmentRequest(
-            enrollmentRequestDto.getStudentId(), 
-            enrollmentRequestDto.getCourseId()
-        );
-        
-        Map<String, Object> response = new HashMap<>();
-        response.put("queueId", queueId);
-        response.put("status", "QUEUED");
-        response.put("message", "수강신청 요청이 큐에 등록되었습니다. 잠시 후 결과를 확인해주세요.");
-        response.put("queueSize", enrollmentQueueService.getQueueSize());
-        
-        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
-    }
-    
-    /**
-     * 큐 기반 수강신청 결과를 조회합니다
-     * 
-     * @param queueId 큐 ID
-     * @return 처리 결과
-     */
-    @GetMapping("/queue/{queueId}")
-    public ResponseEntity<Map<String, Object>> getEnrollmentQueueResult(
-            @PathVariable String queueId) {
-        
-        String status = enrollmentQueueService.getEnrollmentStatus(queueId);
-        Object result = enrollmentQueueService.getEnrollmentResult(queueId);
-        
-        Map<String, Object> response = new HashMap<>();
-        response.put("queueId", queueId);
-        response.put("status", status);
-        
-        if ("COMPLETED".equals(status)) {
-            response.put("result", result);
-            response.put("message", "수강신청이 성공적으로 완료되었습니다.");
-        } else if ("FAILED".equals(status)) {
-            response.put("error", result);
-            response.put("message", "수강신청 처리에 실패했습니다.");
-        } else if ("PROCESSING".equals(status)) {
-            response.put("message", "수강신청을 처리 중입니다. 잠시만 기다려주세요.");
-        } else {
-            response.put("message", "수강신청 요청이 큐에서 대기 중입니다.");
-            response.put("queueSize", enrollmentQueueService.getQueueSize());
-        }
-        
-        return ResponseEntity.ok(response);
-    }
-    
-    /**
-     * 현재 큐 상태를 조회합니다
-     * 
-     * @return 큐 상태 정보
-     */
-    @GetMapping("/queue/status")
-    public ResponseEntity<Map<String, Object>> getQueueStatus() {
-        Map<String, Object> response = new HashMap<>();
-        response.put("totalQueueSize", enrollmentQueueService.getTotalQueueSize());
-        response.put("message", "현재 전체 큐 대기 상태입니다.");
-        
-        return ResponseEntity.ok(response);
-    }
-    
-    /**
-     * 특정 강의의 큐 상태를 조회합니다
-     * 
-     * @param courseId 강의 ID
-     * @return 강의별 큐 상태 정보
-     */
-    @GetMapping("/queue/course/{courseId}")
-    public ResponseEntity<Map<String, Object>> getCourseQueueStatus(
-            @PathVariable @Positive Long courseId) {
-        
-        Map<String, Object> status = enrollmentQueueService.getCourseQueueStatus(courseId);
-        status.put("message", "강의별 큐 상태입니다.");
-        
-        return ResponseEntity.ok(status);
-    }
-    
-    /**
-     * Redis Queue에서 순차적으로 DB INSERT를 처리합니다 (H2 락 문제 해결)
-     * 
-     * @return 처리 결과
-     */
-    @PostMapping("/queue/process")
-    public ResponseEntity<Map<String, Object>> processDbQueue() {
         try {
-            int processedCount = enrollmentService.processDbQueue();
+            // 비동기 처리 시작 (CompletableFuture 반환하지만 즉시 응답)
+            enrollmentService.enrollCourseAsync(enrollmentRequestDto);
             
             Map<String, Object> response = new HashMap<>();
-            response.put("processedCount", processedCount);
-            response.put("message", "DB 큐 처리가 완료되었습니다");
-            response.put("status", "SUCCESS");
+            response.put("message", "수강신청이 비동기로 처리 중입니다.");
+            response.put("status", "PROCESSING");
+            response.put("studentId", enrollmentRequestDto.getStudentId());
+            response.put("courseId", enrollmentRequestDto.getCourseId());
+            response.put("processingMethod", "ASYNC_WITH_LUA_SCRIPT");
             
-            return ResponseEntity.ok(response);
+            return ResponseEntity.accepted().body(response);
             
         } catch (Exception e) {
             Map<String, Object> errorResponse = new HashMap<>();
@@ -384,17 +294,61 @@ public class EnrollmentController {
     }
     
     /**
-     * DB 큐 상태를 조회합니다
+     * 비동기 수강신청 취소 (멀티서버 환경 대응)
      * 
-     * @return DB 큐 상태
+     * @param studentId 학생 ID
+     * @param courseId 강의 ID
+     * @param reason 취소 사유
+     * @return 취소 응답 (비동기 처리 시작 확인)
      */
-    @GetMapping("/queue/db/status")
-    public ResponseEntity<Map<String, Object>> getDbQueueStatus() {
+    @DeleteMapping("/async/student/{studentId}/course/{courseId}")
+    public ResponseEntity<Map<String, Object>> cancelEnrollmentAsync(
+            @PathVariable @Positive Long studentId,
+            @PathVariable @Positive Long courseId,
+            @RequestParam(required = false) String reason) {
+        
+        try {
+            // 비동기 처리 시작
+            enrollmentService.cancelEnrollmentAsync(studentId, courseId, reason);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "수강신청 취소가 비동기로 처리 중입니다.");
+            response.put("status", "PROCESSING");
+            response.put("studentId", studentId);
+            response.put("courseId", courseId);
+            response.put("reason", reason);
+            response.put("processingMethod", "ASYNC_DIRECT_DB");
+            
+            return ResponseEntity.accepted().body(response);
+            
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", e.getMessage());
+            errorResponse.put("status", "ERROR");
+            
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+    }
+    
+    /**
+     * 비동기 처리 상태를 조회합니다
+     * 
+     * @return 비동기 처리 상태 정보
+     */
+    @GetMapping("/async/status")
+    public ResponseEntity<Map<String, Object>> getAsyncStatus() {
+        
         try {
             Map<String, Object> status = new HashMap<>();
-            status.put("dbQueueSize", enrollmentQueueService.getDbQueueSize());
-            status.put("totalQueueSize", enrollmentQueueService.getTotalQueueSize());
-            status.put("message", "DB 큐 상태 조회 완료");
+            
+            status.put("message", "비동기 처리 상태입니다.");
+            status.put("multiServerReady", true);
+            status.put("processingMethod", "ASYNC_WITH_LUA_SCRIPT");
+            status.put("concurrencyControl", "REDIS_LUA_SCRIPT");
+            status.put("description", "Lua 스크립트로 동시성 제어 후 즉시 DB 저장하는 방식");
+            
+            // 스레드 풀 상태 (간단한 정보만)
+            status.put("threadPoolInfo", "enrollmentTaskExecutor: 5-20 threads, queue: 100");
             
             return ResponseEntity.ok(status);
             

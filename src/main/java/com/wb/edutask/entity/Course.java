@@ -22,6 +22,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -38,7 +40,9 @@ import lombok.ToString;
 @Table(name = "courses")
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
 @ToString(exclude = "instructor")
 public class Course {
     
@@ -82,29 +86,23 @@ public class Course {
     @Max(value = 100, message = "수강 정원은 최대 100명 이하여야 합니다")
     private Integer maxStudents;
     
-    /**
-     * 현재 수강 인원
-     */
-    @Column(nullable = false)
-    private Integer currentStudents = 0;
     
     /**
      * 강의 시작일
      */
-    @Column(nullable = false)
-    @NotNull(message = "강의 시작일은 필수입니다")
+    @Column
     private LocalDate startDate;
     
     /**
      * 강의 종료일
      */
-    @Column(nullable = false)
-    @NotNull(message = "강의 종료일은 필수입니다")
+    @Column
     private LocalDate endDate;
     
     /**
      * 강의 상태
      */
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private CourseStatus status = CourseStatus.SCHEDULED;
@@ -142,41 +140,16 @@ public class Course {
         this.maxStudents = maxStudents;
         this.startDate = startDate;
         this.endDate = endDate;
-        this.currentStudents = 0;
         this.status = CourseStatus.SCHEDULED;
     }
     
     /**
-     * 수강 인원을 증가시킵니다
-     * 
-     * @throws IllegalStateException 정원이 초과된 경우
-     */
-    public void increaseCurrentStudents() {
-        if (currentStudents >= maxStudents) {
-            throw new IllegalStateException("수강 정원이 초과되었습니다");
-        }
-        this.currentStudents++;
-    }
-    
-    /**
-     * 수강 인원을 감소시킵니다
-     * 
-     * @throws IllegalStateException 현재 수강 인원이 0명인 경우
-     */
-    public void decreaseCurrentStudents() {
-        if (currentStudents <= 0) {
-            throw new IllegalStateException("현재 수강 인원이 0명입니다");
-        }
-        this.currentStudents--;
-    }
-    
-    /**
-     * 수강 신청이 가능한지 확인합니다
+     * 수강 신청이 가능한지 확인합니다 (상태 기반)
      * 
      * @return 수강 신청 가능 여부
      */
     public boolean canEnroll() {
-        return currentStudents < maxStudents && status == CourseStatus.SCHEDULED;
+        return status == CourseStatus.SCHEDULED || status == CourseStatus.IN_PROGRESS;
     }
     
     /**

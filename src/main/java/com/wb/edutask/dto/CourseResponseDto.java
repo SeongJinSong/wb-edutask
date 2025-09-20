@@ -45,10 +45,6 @@ public class CourseResponseDto {
      */
     private Integer maxStudents;
     
-    /**
-     * 현재 수강 인원
-     */
-    private Integer currentStudents;
     
     /**
      * 강의 시작일
@@ -98,7 +94,6 @@ public class CourseResponseDto {
         dto.description = course.getDescription();
         dto.instructor = InstructorInfo.from(course.getInstructor());
         dto.maxStudents = course.getMaxStudents();
-        dto.currentStudents = course.getCurrentStudents();
         dto.startDate = course.getStartDate();
         dto.endDate = course.getEndDate();
         dto.status = course.getStatus();

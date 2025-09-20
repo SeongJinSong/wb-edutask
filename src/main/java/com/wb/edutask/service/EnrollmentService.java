@@ -1,12 +1,13 @@
 package com.wb.edutask.service;
 
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.wb.edutask.dto.BulkEnrollmentRequestDto;
@@ -40,7 +41,6 @@ public class EnrollmentService {
     private final EnrollmentRepository enrollmentRepository;
     private final MemberRepository memberRepository;
     private final CourseRepository courseRepository;
-    private final EnrollmentQueueService enrollmentQueueService;
     private final RedisConcurrencyService redisConcurrencyService;
     private final StringRedisTemplate stringRedisTemplate;
     
@@ -97,8 +97,6 @@ public class EnrollmentService {
         
         Enrollment savedEnrollment = enrollmentRepository.save(enrollment);
         
-        // Course의 currentStudents를 원자적으로 증가 (Redis와 동기화)
-        courseRepository.incrementCurrentStudents(enrollmentRequestDto.getCourseId());
         
         log.info("수강신청 완료 - StudentId: {}, CourseId: {}", 
                 enrollmentRequestDto.getStudentId(), enrollmentRequestDto.getCourseId());
@@ -106,176 +104,100 @@ public class EnrollmentService {
         return EnrollmentResponseDto.from(savedEnrollment, course);
     }
     
+    
     /**
-     * Redis Queue를 사용하여 수강신청을 처리합니다 (DB 락 문제 해결)
+     * 비동기 수강신청 처리 (멀티서버 환경 대응)
+     * Lua 스크립트로 Redis 체크 후 성공시 즉시 DB 저장
      * 
      * @param enrollmentRequestDto 수강신청 요청 정보
-     * @return 큐 ID (비동기 처리)
+     * @return CompletableFuture<EnrollmentResponseDto>
      */
-    public String enrollCourseWithQueue(EnrollmentRequestDto enrollmentRequestDto) {
-        // 1. 기본 검증 (회원 및 강의 존재 확인)
-        Member member = memberRepository.findById(enrollmentRequestDto.getStudentId())
-                .orElseThrow(() -> new RuntimeException("회원을 찾을 수 없습니다: " + enrollmentRequestDto.getStudentId()));
-        
-        Course course = courseRepository.findById(enrollmentRequestDto.getCourseId())
-                .orElseThrow(() -> new RuntimeException("강의를 찾을 수 없습니다: " + enrollmentRequestDto.getCourseId()));
-        
-        validateEnrollmentBasic(member, course);
-        
-        // 2. Redis Queue를 통한 원자적 처리
-        String queueId = enrollmentQueueService.enqueueEnrollmentRequest(
-            enrollmentRequestDto.getStudentId(), 
-            enrollmentRequestDto.getCourseId()
-        );
-        
-        log.info("수강신청이 큐에 등록되었습니다 - QueueId: {}, StudentId: {}, CourseId: {}", 
-                queueId, enrollmentRequestDto.getStudentId(), enrollmentRequestDto.getCourseId());
-        
-        return queueId;
-    }
-    
-    
-    
-    /**
-     * Redis Queue 처리 결과를 확인하고 DB에 실제 INSERT를 수행합니다
-     * 
-     * @param queueId 큐 ID
-     * @return 수강신청 결과
-     */
-    @Transactional
-    public EnrollmentResponseDto processQueueResult(String queueId) {
+    @Async("enrollmentTaskExecutor")
+    public CompletableFuture<EnrollmentResponseDto> enrollCourseAsync(EnrollmentRequestDto enrollmentRequestDto) {
         try {
-            // 1. 큐 결과 조회
-            Object result = enrollmentQueueService.getEnrollmentResult(queueId);
-            if (result == null) {
-                throw new RuntimeException("큐 결과를 찾을 수 없습니다: " + queueId);
-            }
+            // 1. 기본 검증 (회원 및 강의 존재 확인)
+            Member member = memberRepository.findById(enrollmentRequestDto.getStudentId())
+                    .orElseThrow(() -> new RuntimeException("회원을 찾을 수 없습니다: " + enrollmentRequestDto.getStudentId()));
             
-            // 2. 결과 파싱 (Map으로 변환)
-            @SuppressWarnings("unchecked")
-            java.util.Map<String, Object> resultMap = (java.util.Map<String, Object>) result;
+            Course course = courseRepository.findById(enrollmentRequestDto.getCourseId())
+                    .orElseThrow(() -> new RuntimeException("강의를 찾을 수 없습니다: " + enrollmentRequestDto.getCourseId()));
             
-            Boolean success = Boolean.valueOf(resultMap.get("success").toString());
-            String message = (String) resultMap.get("message");
-            Long studentId = Long.valueOf(resultMap.get("studentId").toString());
-            Long courseId = Long.valueOf(resultMap.get("courseId").toString());
+            validateEnrollmentBasic(member, course);
+            
+            // 2. Lua 스크립트로 Redis 동시성 체크
+            Map<String, Object> luaResult = redisConcurrencyService.executeEnrollmentLuaScript(
+                enrollmentRequestDto.getStudentId(), 
+                enrollmentRequestDto.getCourseId()
+            );
+            
+            Boolean success = (Boolean) luaResult.get("success");
+            String message = (String) luaResult.get("message");
             
             if (!success) {
-                // Redis 메시지를 한국어로 변환
                 String koreanMessage = redisConcurrencyService.convertRedisMessageToKorean(message);
                 throw new RuntimeException(koreanMessage);
             }
             
-            // 3. Redis에서 성공한 경우에만 DB에 실제 INSERT
-            Member student = memberRepository.findById(studentId)
-                    .orElseThrow(() -> new RuntimeException("학생을 찾을 수 없습니다: " + studentId));
-            
-            Course course = courseRepository.findById(courseId)
-                    .orElseThrow(() -> new RuntimeException("강의를 찾을 수 없습니다: " + courseId));
-            
-            // 4. 중복 신청 확인
-            if (enrollmentRepository.existsByStudentIdAndCourseId(studentId, courseId)) {
-                throw new RuntimeException("이미 수강신청한 강의입니다");
-            }
-            
-            // 5. 수강신청 엔티티 생성 및 저장
-            Enrollment enrollment = new Enrollment(student, course);
-            enrollment.approve(); // Redis에서 이미 정원 확인했으므로 자동 승인
+            // 3. Lua 스크립트 성공시 즉시 DB 저장
+            Enrollment enrollment = Enrollment.builder()
+                    .student(member)
+                    .course(course)
+                    .status(EnrollmentStatus.APPROVED)
+                    .build();
             
             Enrollment savedEnrollment = enrollmentRepository.save(enrollment);
             
-            // 6. 강의 정보 재조회 및 Redis 동기화
-            course = courseRepository.findById(courseId)
-                    .orElseThrow(() -> new RuntimeException("강의를 찾을 수 없습니다: " + courseId));
             
-            // 7. Redis와 DB 동기화 (DB 상태를 Redis에 반영)
-            try {
-                redisConcurrencyService.syncCourseToRedisIfNeeded(courseId);
-                log.debug("Redis 동기화 완료 - CourseId: {}, CurrentStudents: {}", courseId, course.getCurrentStudents());
-            } catch (Exception e) {
-                log.warn("Redis 동기화 실패: {}", e.getMessage());
-            }
+            log.info("비동기 수강신청 처리 완료 - StudentId: {}, CourseId: {}, EnrollmentId: {}", 
+                    enrollmentRequestDto.getStudentId(), enrollmentRequestDto.getCourseId(), savedEnrollment.getId());
             
-            log.info("수강신청 DB 저장 완료 - QueueId: {}, StudentId: {}, CourseId: {}", 
-                    queueId, studentId, courseId);
+            // 5. 응답 DTO 생성 (기존 from 메서드 사용)
+            EnrollmentResponseDto responseDto = EnrollmentResponseDto.from(savedEnrollment, course);
             
-            return EnrollmentResponseDto.from(savedEnrollment, course);
+            return CompletableFuture.completedFuture(responseDto);
             
         } catch (Exception e) {
-            log.error("큐 결과 처리 실패 - QueueId: {}, Error: {}", queueId, e.getMessage(), e);
-            throw new RuntimeException("큐 결과 처리 실패: " + e.getMessage(), e);
+            log.error("비동기 수강신청 처리 실패 - StudentId: {}, CourseId: {}, Error: {}", 
+                    enrollmentRequestDto.getStudentId(), enrollmentRequestDto.getCourseId(), e.getMessage(), e);
+            
+            return CompletableFuture.failedFuture(e);
         }
     }
     
     /**
-     * Redis Queue에서 순차적으로 DB INSERT를 처리합니다 (H2 락 문제 해결)
+     * 비동기 수강신청 취소 처리
      * 
-     * @return 처리된 수강신청 수
+     * @param studentId 학생 ID
+     * @param courseId 강의 ID
+     * @param reason 취소 사유
+     * @return CompletableFuture<String>
      */
-    @Transactional
-    public int processDbQueue() {
-        int processedCount = 0;
-        
+    @Async("enrollmentTaskExecutor")
+    public CompletableFuture<String> cancelEnrollmentAsync(Long studentId, Long courseId, String reason) {
         try {
-            // Redis Queue에서 대기 중인 항목들을 순차적으로 처리
-            while (true) {
-                Map<String, Object> queueItem = enrollmentQueueService.getNextDbQueueItem();
-                if (queueItem == null) {
-                    break; // 처리할 항목이 없음
-                }
-                
-                try {
-                    String queueId = (String) queueItem.get("queueId");
-                    Long studentId = Long.valueOf(queueItem.get("studentId").toString());
-                    Long courseId = Long.valueOf(queueItem.get("courseId").toString());
-                    
-                    log.info("DB 큐 처리 시작 - QueueId: {}, StudentId: {}, CourseId: {}", 
-                            queueId, studentId, courseId);
-                    
-                    // 1. 회원 및 강의 정보 조회
-                    Member student = memberRepository.findById(studentId)
-                            .orElseThrow(() -> new RuntimeException("학생을 찾을 수 없습니다: " + studentId));
-                    
-                    Course course = courseRepository.findById(courseId)
-                            .orElseThrow(() -> new RuntimeException("강의를 찾을 수 없습니다: " + courseId));
-                    
-                    // 2. 중복 신청 확인 (Redis에서 이미 정원 확인했지만 DB에서도 한 번 더 확인)
-                    if (enrollmentRepository.existsByStudentIdAndCourseId(studentId, courseId)) {
-                        log.warn("중복 수강신청 감지 - QueueId: {}, StudentId: {}, CourseId: {}", 
-                                queueId, studentId, courseId);
-                        enrollmentQueueService.markDbQueueItemCompleted(queueId);
-                        continue;
-                    }
-                    
-                    // 3. 수강신청 엔티티 생성 및 저장 (순차적으로 하나씩)
-                    Enrollment enrollment = new Enrollment(student, course);
-                    enrollment.approve(); // Redis에서 이미 정원 확인했으므로 자동 승인
-                    
-                    Enrollment savedEnrollment = enrollmentRepository.save(enrollment);
-                    
-                    // 4. DB 처리 완료 표시
-                    enrollmentQueueService.markDbQueueItemCompleted(queueId);
-                    
-                    processedCount++;
-                    log.info("DB 큐 처리 완료 - QueueId: {}, StudentId: {}, CourseId: {}, ProcessedCount: {}", 
-                            queueId, studentId, courseId, processedCount);
-                    
-                } catch (Exception e) {
-                    log.error("DB 큐 항목 처리 실패 - QueueItem: {}, Error: {}", queueItem, e.getMessage(), e);
-                    // 실패한 항목은 큐에서 제거하지 않고 다음으로 넘어감
-                }
-            }
+            // 수강신청 조회
+            Enrollment enrollment = enrollmentRepository.findByStudentIdAndCourseId(studentId, courseId)
+                    .orElseThrow(() -> new RuntimeException("수강신청을 찾을 수 없습니다"));
             
-            if (processedCount > 0) {
-                log.info("DB 큐 처리 완료 - 총 처리된 수강신청 수: {}", processedCount);
-            }
+            // 기존 취소 로직 호출
+            cancelEnrollment(enrollment.getId(), reason);
+            
+            log.info("비동기 수강신청 취소 완료 - StudentId: {}, CourseId: {}, EnrollmentId: {}", 
+                    studentId, courseId, enrollment.getId());
+            
+            return CompletableFuture.completedFuture("수강신청 취소가 완료되었습니다.");
             
         } catch (Exception e) {
-            log.error("DB 큐 처리 중 오류 발생: {}", e.getMessage(), e);
+            log.error("비동기 수강신청 취소 실패 - StudentId: {}, CourseId: {}, Error: {}", 
+                    studentId, courseId, e.getMessage(), e);
+            
+            return CompletableFuture.failedFuture(e);
         }
-        
-        return processedCount;
     }
+    
+    
+    
+    
     
     /**
      * 수강신청 ID로 수강신청 정보를 조회합니다
@@ -356,19 +278,6 @@ public class EnrollmentService {
         
         // 4. 강의의 현재 수강생 수 감소
         Course course = enrollment.getCourse();
-        if (course.getCurrentStudents() > 0) {
-            course.decreaseCurrentStudents();
-            courseRepository.save(course);
-        }
-        
-        // 5. Redis 동기화 (단순 increment)
-        try {
-            String courseKey = "course:" + course.getId();
-            stringRedisTemplate.opsForHash().increment(courseKey, "currentStudents", -1);
-            log.debug("Redis 수강생 수 감소 완료: {}", course.getId());
-        } catch (Exception e) {
-            log.warn("Redis 수강생 수 감소 실패: {}", e.getMessage());
-        }
         
         log.info("수강신청이 취소되었습니다 - EnrollmentId: {}, StudentId: {}, CourseId: {}, Reason: {}", 
                 enrollmentId, enrollment.getStudent().getId(), course.getId(), reason);
@@ -393,15 +302,13 @@ public class EnrollmentService {
         
         Course course = enrollment.getCourse();
         
-        // 정원 확인
-        if (course.getCurrentStudents() >= course.getMaxStudents()) {
+        // 정원 확인 (실시간 DB 조회)
+        long currentEnrollments = enrollmentRepository.countActiveEnrollmentsByCourse(course.getId());
+        if (currentEnrollments >= course.getMaxStudents()) {
             throw new RuntimeException("강의 정원이 초과되었습니다");
         }
         
         enrollment.approve();
-        course.increaseCurrentStudents();
-        
-        courseRepository.save(course);
         Enrollment savedEnrollment = enrollmentRepository.save(enrollment);
         
         return EnrollmentResponseDto.from(savedEnrollment);
@@ -442,17 +349,12 @@ public class EnrollmentService {
             throw new RuntimeException("이미 수강신청한 강의입니다");
         }
         
-        // 2. 강의 상태 확인
-        if (course.getStatus() != CourseStatus.SCHEDULED) {
+        // 2. 강의 상태 확인 (온라인 강의 특성상 진행 중인 강의도 수강신청 가능)
+        if (course.getStatus() == CourseStatus.COMPLETED || course.getStatus() == CourseStatus.CANCELLED) {
             throw new RuntimeException("수강신청할 수 없는 강의 상태입니다: " + course.getStatus().getDescription());
         }
         
-        // 3. 강의 시작일 확인
-        if (course.getStartDate().isBefore(LocalDate.now())) {
-            throw new RuntimeException("이미 시작된 강의는 수강신청할 수 없습니다");
-        }
-        
-        // 4. 자기 자신이 강사인 강의 확인 (강사도 다른 강사의 강의는 수강 가능)
+        // 3. 자기 자신이 강사인 강의 확인 (강사도 다른 강사의 강의는 수강 가능)
         if (course.getInstructor().getId().equals(member.getId())) {
             throw new RuntimeException("자신이 강사인 강의는 수강신청할 수 없습니다");
         }
@@ -523,30 +425,6 @@ public class EnrollmentService {
     }
     
     
-    /**
-     * Redis Queue를 사용하여 수강신청 취소를 처리합니다
-     * 
-     * @param enrollmentId 수강신청 ID
-     * @param reason 취소 사유
-     * @return 큐 ID
-     */
-    public String cancelEnrollmentWithQueue(Long enrollmentId, String reason) {
-        // 1. 수강신청 정보 조회
-        Enrollment enrollment = enrollmentRepository.findById(enrollmentId)
-                .orElseThrow(() -> new RuntimeException("수강신청을 찾을 수 없습니다: " + enrollmentId));
-        
-        // 2. Redis Queue를 통한 원자적 취소 처리
-        String queueId = enrollmentQueueService.enqueueCancelRequest(
-            enrollment.getStudent().getId(), 
-            enrollment.getCourse().getId(),
-            reason
-        );
-        
-        log.info("수강신청 취소가 큐에 등록되었습니다 - QueueId: {}, EnrollmentId: {}, StudentId: {}, CourseId: {}", 
-                queueId, enrollmentId, enrollment.getStudent().getId(), enrollment.getCourse().getId());
-        
-        return queueId;
-    }
     
     /**
      * 취소 큐 결과를 처리하여 DB에 저장합니다
@@ -573,12 +451,8 @@ public class EnrollmentService {
             enrollment.cancel(reason);
             enrollmentRepository.save(enrollment);
             
-            // 강의의 현재 수강생 수 감소 (Redis에서 이미 처리됨)
+            // 강의 정보 (로그용)
             Course course = enrollment.getCourse();
-            if (course.getCurrentStudents() > 0) {
-                course.decreaseCurrentStudents();
-                courseRepository.save(course);
-            }
             
             log.info("수강신청 취소 DB 저장 완료 - EnrollmentId: {}, StudentId: {}, CourseId: {}", 
                     enrollmentId, enrollment.getStudent().getId(), course.getId());

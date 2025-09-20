@@ -28,6 +28,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wb.edutask.dto.BulkEnrollmentRequestDto;
 import com.wb.edutask.dto.EnrollmentRequestDto;
 import com.wb.edutask.entity.Course;
+import com.wb.edutask.entity.Enrollment;
 import com.wb.edutask.entity.Member;
 import com.wb.edutask.enums.MemberType;
 import com.wb.edutask.repository.CourseRepository;
@@ -115,14 +116,14 @@ class EnrollmentControllerTest {
         instructor = memberRepository.save(instructor);
         
         // 강의 생성
-        course = new Course(
-            "Java 프로그래밍", 
-            "Java 기초부터 심화까지", 
-            instructor, 
-            10, 
-            LocalDate.now().plusDays(7), 
-            LocalDate.now().plusDays(37)
-        );
+        course = Course.builder()
+                .courseName("Java 프로그래밍")
+                .description("Java 기초부터 심화까지")
+                .instructor(instructor)
+                .maxStudents(10)
+                .startDate(LocalDate.now().plusDays(7))
+                .endDate(LocalDate.now().plusDays(37))
+                .build();
         course = courseRepository.save(course);
     }
     
@@ -158,14 +159,14 @@ class EnrollmentControllerTest {
         otherInstructor = memberRepository.save(otherInstructor);
         
         // 다른 강사의 강의 생성
-        Course otherCourse = new Course(
-            "Python 프로그래밍", 
-            "Python 기초부터 심화까지", 
-            otherInstructor, 
-            15, 
-            LocalDate.now().plusDays(10), 
-            LocalDate.now().plusDays(40)
-        );
+        Course otherCourse = Course.builder()
+                .courseName("Python 프로그래밍")
+                .description("Python 기초부터 심화까지")
+                .instructor(otherInstructor)
+                .maxStudents(15)
+                .startDate(LocalDate.now().plusDays(10))
+                .endDate(LocalDate.now().plusDays(40))
+                .build();
         otherCourse = courseRepository.save(otherCourse);
         
         EnrollmentRequestDto requestDto = new EnrollmentRequestDto(instructor.getId(), otherCourse.getId());
@@ -413,8 +414,19 @@ class EnrollmentControllerTest {
             LocalDate.now().plusDays(10), 
             LocalDate.now().plusDays(40)
         );
-        fullCourse.increaseCurrentStudents(); // 정원을 가득 채움
-        fullCourse = courseRepository.save(fullCourse);
+        fullCourse = courseRepository.save(fullCourse); // Course를 먼저 저장
+        // 정원을 가득 채우기 위해 더미 학생과 수강신청 생성
+        Member dummyStudent = Member.builder()
+                .name("더미학생")
+                .email("dummy@controller.test")
+                .password("Pass123!")
+                .phoneNumber("010-8888-8888")
+                .memberType(MemberType.STUDENT)
+                .build();
+        dummyStudent = memberRepository.save(dummyStudent);
+        Enrollment dummyEnrollment = new Enrollment(dummyStudent, fullCourse);
+        dummyEnrollment.approve();
+        enrollmentRepository.save(dummyEnrollment);
         
         BulkEnrollmentRequestDto requestDto = new BulkEnrollmentRequestDto(
             student.getId(), 

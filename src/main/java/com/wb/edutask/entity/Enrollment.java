@@ -18,6 +18,8 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -35,7 +37,9 @@ import lombok.ToString;
        uniqueConstraints = @UniqueConstraint(columnNames = {"student_id", "course_id"}))
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
 @ToString(exclude = {"student", "course"})
 public class Enrollment {
     
@@ -65,6 +69,7 @@ public class Enrollment {
     /**
      * 수강신청 상태
      */
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private EnrollmentStatus status = EnrollmentStatus.APPLIED;

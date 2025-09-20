@@ -162,14 +162,13 @@ class ConcurrencyTest {
         long actualEnrollmentCount = enrollmentRepository.countActiveEnrollmentsByCourse(limitedCourse.getId());
         assertThat(actualEnrollmentCount).isEqualTo(COURSE_CAPACITY);
         
-        // 강의의 현재 수강생 수 확인
-        Course updatedCourse = courseRepository.findById(limitedCourse.getId()).orElseThrow();
-        assertThat(updatedCourse.getCurrentStudents()).isEqualTo(COURSE_CAPACITY);
+        // 실제 DB 수강신청 수와 정원 비교
+        assertThat(actualEnrollmentCount).isEqualTo(COURSE_CAPACITY);
         
         log.info("=== 동시성 테스트 결과 ===");
         log.info("성공: {}명, 실패: {}명", successCount.get(), failureCount.get());
         log.info("실제 DB 수강신청 수: {}명", actualEnrollmentCount);
-        log.info("강의 현재 수강생 수: {}명", updatedCourse.getCurrentStudents());
+        log.info("강의 정원: {}명", COURSE_CAPACITY);
     }
     
     @Test
@@ -244,7 +243,7 @@ class ConcurrencyTest {
         log.info("동시 요청: {}개", THREAD_COUNT);
         log.info("성공: {}명, 실패: {}명", successCount.get(), failureCount.get());
         log.info("실제 DB 수강신청 수: {}명", actualEnrollmentCount);
-        log.info("강의 현재 수강생 수: {}명", updatedCourse.getCurrentStudents());
+        log.info("강의 정원: {}명", limitedCourse.getMaxStudents());
         log.info("Redis 카운트: {}", redisCount);
         log.info("실행 시간: {}ms", executionTime);
         log.info("평균 처리 시간: {}ms/request", executionTime / (double) THREAD_COUNT);

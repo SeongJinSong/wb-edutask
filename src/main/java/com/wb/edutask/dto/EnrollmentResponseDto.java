@@ -4,6 +4,8 @@ import java.time.LocalDateTime;
 import com.wb.edutask.entity.Course;
 import com.wb.edutask.entity.Enrollment;
 import com.wb.edutask.enums.EnrollmentStatus;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -17,7 +19,9 @@ import lombok.Setter;
  */
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
+@AllArgsConstructor
 public class EnrollmentResponseDto {
     
     /**
@@ -149,7 +153,6 @@ public class EnrollmentResponseDto {
         private Long id;
         private String courseName;
         private String instructorName;
-        private Integer currentStudents;
         
         /**
          * Course 엔티티로부터 CourseInfo를 생성합니다
@@ -162,7 +165,6 @@ public class EnrollmentResponseDto {
             info.id = course.getId();
             info.courseName = course.getCourseName();
             info.instructorName = course.getInstructor().getName();
-            info.currentStudents = course.getCurrentStudents();
             return info;
         }
     }

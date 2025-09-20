@@ -1,7 +1,6 @@
 package com.wb.edutask.controller;
 
 import java.util.Optional;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -15,6 +14,7 @@ import com.wb.edutask.dto.MemberRequestDto;
 import com.wb.edutask.dto.MemberResponseDto;
 import com.wb.edutask.service.MemberService;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 
 /**
  * 회원 관리를 위한 REST API 컨트롤러
@@ -26,14 +26,11 @@ import jakarta.validation.Valid;
 @RestController
 @RequestMapping("/api/v1/members")
 @CrossOrigin(origins = "*") // CORS 설정 (개발용)
+@RequiredArgsConstructor
 public class MemberController {
     
     private final MemberService memberService;
     
-    @Autowired
-    public MemberController(MemberService memberService) {
-        this.memberService = memberService;
-    }
     
     /**
      * 회원 가입 API
