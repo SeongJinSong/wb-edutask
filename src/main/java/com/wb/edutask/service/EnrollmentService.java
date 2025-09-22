@@ -279,6 +279,15 @@ public class EnrollmentService {
         // 4. 강의의 현재 수강생 수 감소
         Course course = enrollment.getCourse();
         
+        // 5. Redis에서 수강생 수 감소 (동시성 제어를 위해)
+        try {
+            redisConcurrencyService.decreaseCourseStudents(course.getId());
+            log.info("Redis 수강생 수 감소 완료 - CourseId: {}", course.getId());
+        } catch (Exception e) {
+            log.warn("Redis 수강생 수 감소 실패 - CourseId: {}, Error: {}", course.getId(), e.getMessage());
+            // Redis 실패는 치명적이지 않으므로 계속 진행
+        }
+        
         log.info("수강신청이 취소되었습니다 - EnrollmentId: {}, StudentId: {}, CourseId: {}, Reason: {}", 
                 enrollmentId, enrollment.getStudent().getId(), course.getId(), reason);
         
@@ -332,6 +341,16 @@ public class EnrollmentService {
         
         enrollment.reject(reason);
         Enrollment savedEnrollment = enrollmentRepository.save(enrollment);
+        
+        // Redis에서 수강생 수 감소 (거절 시에도 필요)
+        Course course = enrollment.getCourse();
+        try {
+            redisConcurrencyService.decreaseCourseStudents(course.getId());
+            log.info("Redis 수강생 수 감소 완료 (거절) - CourseId: {}", course.getId());
+        } catch (Exception e) {
+            log.warn("Redis 수강생 수 감소 실패 (거절) - CourseId: {}, Error: {}", course.getId(), e.getMessage());
+            // Redis 실패는 치명적이지 않으므로 계속 진행
+        }
         
         return EnrollmentResponseDto.from(savedEnrollment);
     }
