@@ -326,52 +326,9 @@ class EnrollmentServiceTest {
             .hasMessageContaining("이미 취소되었거나 거절된 수강신청입니다");
     }
     
-    @Test
-    @DisplayName("수강신청 승인 성공 테스트")
-    void approveEnrollment_Success() {
-        // Given
-        // 정원을 0으로 설정하여 자동 승인되지 않게 함
-        course.setMaxStudents(0);
-        courseRepository.save(course);
-        
-        // 수동으로 수강신청 생성 (자동 승인 방지)
-        Enrollment enrollment = new Enrollment(student, course);
-        enrollment = enrollmentRepository.save(enrollment);
-        
-        // 정원을 다시 늘림
-        course.setMaxStudents(10);
-        courseRepository.save(course);
-        
-        // When
-        EnrollmentResponseDto approvedEnrollment = enrollmentService.approveEnrollment(enrollment.getId());
-        
-        // Then
-        assertThat(approvedEnrollment.getStatus()).isEqualTo(EnrollmentStatus.APPROVED);
-        assertThat(approvedEnrollment.getApprovedAt()).isNotNull();
-        
-        // 실제 DB에서 승인된 수강신청 수 확인
-        long approvedEnrollments = enrollmentRepository.countActiveEnrollmentsByCourse(course.getId());
-        assertThat(approvedEnrollments).isEqualTo(1);
-    }
+    // 온라인 강의는 즉시 승인되므로 별도 승인 테스트 불필요 (approveEnrollment 메서드 제거됨)
     
-    @Test
-    @DisplayName("수강신청 거절 성공 테스트")
-    void rejectEnrollment_Success() {
-        // Given
-        // 수동으로 수강신청 생성
-        Enrollment enrollment = new Enrollment(student, course);
-        enrollment = enrollmentRepository.save(enrollment);
-        
-        // When
-        EnrollmentResponseDto rejectedEnrollment = enrollmentService.rejectEnrollment(
-            enrollment.getId(), "정원 초과로 인한 거절"
-        );
-        
-        // Then
-        assertThat(rejectedEnrollment.getStatus()).isEqualTo(EnrollmentStatus.REJECTED);
-        assertThat(rejectedEnrollment.getReason()).isEqualTo("정원 초과로 인한 거절");
-        assertThat(rejectedEnrollment.getCancelledAt()).isNotNull();
-    }
+    // 온라인 강의는 거절 기능이 없음 (rejectEnrollment 메서드 제거됨)
     
     @Test
     @DisplayName("수강신청 ID로 조회 성공 테스트")

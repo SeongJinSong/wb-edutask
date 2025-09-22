@@ -3,7 +3,6 @@ package com.wb.edutask.controller;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import java.time.LocalDate;
@@ -334,71 +333,14 @@ class EnrollmentControllerTest {
                 .andExpect(jsonPath("$.reason").value("개인 사정으로 인한 취소"));
     }
     
-    @Test
-    @DisplayName("수강신청 승인 성공 테스트")
-    void approveEnrollment_Success() throws Exception {
-        // Given
-        // 정원을 0으로 설정하여 자동 승인 방지하고 수동으로 수강신청 생성
-        course.setMaxStudents(0);
-        courseRepository.save(course);
-        
-        // 수동으로 수강신청 생성 (자동 승인 방지)
-        com.wb.edutask.entity.Enrollment enrollment = new com.wb.edutask.entity.Enrollment(student, course);
-        com.wb.edutask.repository.EnrollmentRepository enrollmentRepository = 
-            webApplicationContext.getBean(com.wb.edutask.repository.EnrollmentRepository.class);
-        enrollment = enrollmentRepository.save(enrollment);
-        
-        // 정원을 다시 늘림
-        course.setMaxStudents(10);
-        courseRepository.save(course);
-        
-        // When & Then
-        mockMvc.perform(put("/api/v1/enrollments/{enrollmentId}/approve", enrollment.getId()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("APPROVED"));
-    }
+    // 수강신청 승인 API가 삭제되어 테스트 제거됨 (온라인 강의는 자동 승인)
     
-    @Test
-    @DisplayName("수강신청 거절 성공 테스트")
-    void rejectEnrollment_Success() throws Exception {
-        // Given
-        // 수동으로 수강신청 생성 (자동 승인 방지)
-        com.wb.edutask.entity.Enrollment enrollment = new com.wb.edutask.entity.Enrollment(student, course);
-        com.wb.edutask.repository.EnrollmentRepository enrollmentRepository = 
-            webApplicationContext.getBean(com.wb.edutask.repository.EnrollmentRepository.class);
-        enrollment = enrollmentRepository.save(enrollment);
-        
-        // When & Then
-        mockMvc.perform(put("/api/v1/enrollments/{enrollmentId}/reject", enrollment.getId())
-                .param("reason", "정원 초과로 인한 거절"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("REJECTED"))
-                .andExpect(jsonPath("$.reason").value("정원 초과로 인한 거절"));
-    }
+    // 수강신청 거절 API가 삭제되어 테스트 제거됨 (온라인 강의는 자동 승인)
     
     
-    @Test
-    @DisplayName("잘못된 수강신청 ID로 승인 시도 시 실패 테스트")
-    void approveEnrollment_InvalidId() throws Exception {
-        // When & Then
-        mockMvc.perform(put("/api/v1/enrollments/{enrollmentId}/approve", -1L))
-                .andExpect(status().isBadRequest());
-    }
+    // 수강신청 승인 API가 삭제되어 테스트 제거됨
     
-    @Test
-    @DisplayName("거절 사유 없이 수강신청 거절 시도 시 실패 테스트")
-    void rejectEnrollment_NoReason() throws Exception {
-        // Given
-        // 수동으로 수강신청 생성 (자동 승인 방지)
-        com.wb.edutask.entity.Enrollment enrollment = new com.wb.edutask.entity.Enrollment(student, course);
-        com.wb.edutask.repository.EnrollmentRepository enrollmentRepository = 
-            webApplicationContext.getBean(com.wb.edutask.repository.EnrollmentRepository.class);
-        enrollment = enrollmentRepository.save(enrollment);
-        
-        // When & Then
-        mockMvc.perform(put("/api/v1/enrollments/{enrollmentId}/reject", enrollment.getId()))
-                .andExpect(status().isBadRequest());
-    }
+    // 수강신청 거절 API가 삭제되어 테스트 제거됨
     
     
     // @Test
