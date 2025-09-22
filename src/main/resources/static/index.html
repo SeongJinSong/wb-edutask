@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WB Education - 강의 목록</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🎓 WB Education - 강의 목록</h1>
+            <nav class="nav">
+                <a href="/" class="nav-link active">강의 목록</a>
+                <a href="/members" class="nav-link">회원 관리</a>
+                <a href="/signup" class="nav-link">회원가입</a>
+                <a href="/course-register" class="nav-link">강의등록</a>
+                    <a href="/enrollment" class="nav-link">신청현황</a>
+                <a href="/h2-console" class="nav-link" target="_blank">H2 콘솔</a>
+            </nav>
+            <div class="filter-options">
+                <label>
+                    <input type="radio" name="sort" value="recent" checked>
+                    <span>최근 등록순</span>
+                </label>
+                <label>
+                    <input type="radio" name="sort" value="applicants">
+                    <span>신청자 많은순</span>
+                </label>
+                <label>
+                    <input type="radio" name="sort" value="remaining">
+                    <span>신청률 높은순</span>
+                </label>
+            </div>
+        </header>
+
+            <!-- 회원 로그인 섹션 -->
+            <div class="member-login-section">
+                <div class="login-form">
+                    <label for="memberId" class="login-label">회원번호:</label>
+                    <input type="number" id="memberId" class="login-input" placeholder="회원번호를 입력하세요" min="1">
+                    <button id="loginBtn" class="login-btn">로그인</button>
+                    <div class="member-info" id="memberInfo" style="display: none;">
+                        <span class="member-name" id="memberName"></span>
+                        <span class="member-type" id="memberType"></span>
+                        <button id="logoutBtn" class="logout-btn">로그아웃</button>
+                    </div>
+                    
+                    <!-- 수강신청 버튼을 여기로 이동 -->
+                    <div class="enrollment-controls">
+                        <span id="selectedCount" class="selected-count">선택된 강의: 0개</span>
+                        <button class="enroll-btn" id="enrollBtn" disabled>
+                            선택한 강의 수강신청하기
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        <main class="main-content">
+            <div class="course-list" id="courseList">
+                <!-- 강의 목록이 여기에 동적으로 로드됩니다 -->
+            </div>
+        </main>
+    </div>
+
+    <!-- 로딩 스피너 -->
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>강의 목록을 불러오는 중...</p>
+    </div>
+
+    <!-- 알림 메시지 -->
+    <div class="notification" id="notification">
+        <span id="notificationMessage"></span>
+        <button class="close-btn" onclick="hideNotification()">&times;</button>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>

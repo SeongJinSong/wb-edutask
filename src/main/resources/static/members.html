@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WB Education - 회원 관리</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🎓 WB Education - 회원 관리</h1>
+            <nav class="nav">
+                <a href="/" class="nav-link">강의 목록</a>
+                <a href="/members" class="nav-link active">회원 관리</a>
+                <a href="/signup" class="nav-link">회원가입</a>
+                <a href="/course-register" class="nav-link">강의등록</a>
+                <a href="/enrollment" class="nav-link">신청현황</a>
+                <a href="/h2-console" class="nav-link" target="_blank">H2 콘솔</a>
+            </nav>
+        </header>
+
+        <main class="main">
+            <!-- 회원 검색 섹션 -->
+            <section class="search-section">
+                <h2>회원 검색</h2>
+                <div class="search-form">
+                    <input type="text" id="searchInput" placeholder="이메일 또는 이름으로 검색..." class="search-input">
+                    <button id="searchBtn" class="search-btn">검색</button>
+                </div>
+            </section>
+
+            <!-- 회원 목록 섹션 -->
+            <section class="members-section">
+                <h2>회원 목록</h2>
+                <div class="member-filters">
+                    <label>
+                        <input type="radio" name="memberType" value="all" checked> 전체
+                    </label>
+                    <label>
+                        <input type="radio" name="memberType" value="STUDENT"> 학생
+                    </label>
+                    <label>
+                        <input type="radio" name="memberType" value="INSTRUCTOR"> 강사
+                    </label>
+                </div>
+                
+                <!-- 회원 테이블 -->
+                <div class="table-container">
+                    <table id="membersTable" class="members-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>이름</th>
+                                <th>이메일</th>
+                                <th>전화번호</th>
+                                <th>회원유형</th>
+                                <th>가입일</th>
+                                <th>액션</th>
+                            </tr>
+                        </thead>
+                        <tbody id="membersList">
+                            <!-- 회원 목록이 여기에 동적으로 추가됩니다 -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div id="loadingMembers" class="loading" style="display: none;">
+                    <div class="spinner"></div>
+                    <p>회원 정보를 불러오는 중...</p>
+                </div>
+                
+            </section>
+
+            <!-- 회원 상세 정보 모달 -->
+            <div id="memberModal" class="modal" style="display: none;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>회원 상세 정보</h3>
+                        <span class="close">&times;</span>
+                    </div>
+                    <div class="modal-body" id="memberDetails">
+                        <!-- 회원 상세 정보가 여기에 표시됩니다 -->
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/members.js"></script>
+</body>
+</html>

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WB Education - 강의등록</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🎓 WB Education</h1>
+            <nav class="nav">
+                <a href="/" class="nav-link">강의 목록</a>
+                <a href="/members" class="nav-link">회원 관리</a>
+                <a href="/signup" class="nav-link">회원가입</a>
+                <a href="/course-register" class="nav-link active">강의등록</a>
+                <a href="/enrollment" class="nav-link">신청현황</a>
+                <a href="/h2-console" class="nav-link" target="_blank">H2 콘솔</a>
+            </nav>
+        </header>
+
+        <main class="main">
+            <div class="form-container">
+                <div class="form-card">
+                    <h2 class="form-title">강의 등록</h2>
+                    
+                    <form id="courseForm" class="course-form">
+                        <div class="form-group">
+                            <label for="instructorId" class="form-label">강사 회원번호</label>
+                            <input type="number" id="instructorId" name="instructorId" class="form-input" placeholder="강사의 회원번호를 입력하세요" required>
+                            <small class="form-help">강사 권한이 있는 회원번호를 입력해주세요</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="courseName" class="form-label">강의명</label>
+                            <input type="text" id="courseName" name="courseName" class="form-input" placeholder="니나위의 내집마련 기초반" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="description" class="form-label">강의 설명</label>
+                            <textarea id="description" name="description" class="form-textarea" rows="4" placeholder="강의에 대한 상세한 설명을 입력해주세요" required></textarea>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="maxStudents" class="form-label">수강 인원</label>
+                                <input type="number" id="maxStudents" name="maxStudents" class="form-input" placeholder="10" min="1" max="100" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="price" class="form-label">가격 (원)</label>
+                                <input type="number" id="price" name="price" class="form-input" placeholder="200000" min="0" step="1">
+                                <small class="form-help">0원 입력시 무료 강의로 등록됩니다</small>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="startDate" class="form-label">시작일</label>
+                                <input type="date" id="startDate" name="startDate" class="form-input" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="endDate" class="form-label">종료일</label>
+                                <input type="date" id="endDate" name="endDate" class="form-input" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">강의 카테고리</label>
+                            <div class="checkbox-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="categories" value="부동산기초">
+                                    <span class="checkbox-custom"></span>
+                                    부동산 기초
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="categories" value="신도시투자">
+                                    <span class="checkbox-custom"></span>
+                                    신도시 투자
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="categories" value="경매투자">
+                                    <span class="checkbox-custom"></span>
+                                    경매 투자
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="categories" value="재개발투자">
+                                    <span class="checkbox-custom"></span>
+                                    재개발 투자
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="button" class="form-cancel-btn" id="cancelBtn">취소</button>
+                            <button type="submit" class="form-submit-btn" id="submitBtn">
+                                <span class="btn-text">등록하기</span>
+                                <div class="btn-loading" style="display: none;">
+                                    <div class="spinner-small"></div>
+                                    처리 중...
+                                </div>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 강사 정보 확인 모달 -->
+            <div id="instructorModal" class="modal" style="display: none;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>강사 정보 확인</h3>
+                        <span class="close" id="closeInstructorModal">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <div id="instructorInfo" class="instructor-info"></div>
+                        <div class="modal-actions">
+                            <button id="confirmInstructor" class="modal-btn primary">확인</button>
+                            <button id="cancelInstructor" class="modal-btn">취소</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 결과 메시지 모달 -->
+            <div id="messageModal" class="modal" style="display: none;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3 id="modalTitle">알림</h3>
+                        <span class="close" id="closeModal">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <div id="modalMessage" class="modal-message"></div>
+                        <div class="modal-actions">
+                            <button id="modalOkBtn" class="modal-btn">확인</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/course-register.js"></script>
+</body>
+</html>

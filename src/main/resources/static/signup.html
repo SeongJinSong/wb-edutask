@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WB Education - 회원가입</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🎓 WB Education</h1>
+            <nav class="nav">
+                <a href="/" class="nav-link">강의 목록</a>
+                <a href="/members" class="nav-link">회원 관리</a>
+                <a href="/signup" class="nav-link active">회원가입</a>
+                <a href="/course-register" class="nav-link">강의등록</a>
+                <a href="/enrollment" class="nav-link">신청현황</a>
+                <a href="/h2-console" class="nav-link" target="_blank">H2 콘솔</a>
+            </nav>
+        </header>
+
+        <main class="main">
+            <div class="form-container">
+                <div class="form-card">
+                    <h2 class="form-title">회원 가입</h2>
+                    
+                    <form id="signupForm" class="signup-form">
+                        <div class="form-group">
+                            <label for="name" class="form-label">이름</label>
+                            <input type="text" id="name" name="name" class="form-input" placeholder="홍길동" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="email" class="form-label">이메일</label>
+                            <input type="email" id="email" name="email" class="form-input" placeholder="hong@weolbu.com" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="phoneNumber" class="form-label">휴대폰 번호</label>
+                            <input type="tel" id="phoneNumber" name="phoneNumber" class="form-input" placeholder="010-1234-5678" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="password" class="form-label">비밀번호</label>
+                            <input type="password" id="password" name="password" class="form-input" placeholder="******" required>
+                            <small class="form-help">영문 대소문자, 숫자를 포함해야 합니다</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="confirmPassword" class="form-label">비밀번호 확인</label>
+                            <input type="password" id="confirmPassword" name="confirmPassword" class="form-input" placeholder="******" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">회원 유형</label>
+                            <div class="radio-group">
+                                <label class="radio-label">
+                                    <input type="radio" name="memberType" value="STUDENT" checked>
+                                    <span class="radio-custom"></span>
+                                    수강생
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="memberType" value="INSTRUCTOR">
+                                    <span class="radio-custom"></span>
+                                    강사
+                                </label>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="form-submit-btn" id="submitBtn">
+                            <span class="btn-text">가입하기</span>
+                            <div class="btn-loading" style="display: none;">
+                                <div class="spinner-small"></div>
+                                처리 중...
+                            </div>
+                        </button>
+                    </form>
+
+                    <div class="form-footer">
+                        <p>이미 계정이 있으신가요? <a href="/login" class="link">로그인</a></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 성공/실패 메시지 모달 -->
+            <div id="messageModal" class="modal" style="display: none;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3 id="modalTitle">알림</h3>
+                        <span class="close" id="closeModal">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <div id="modalMessage" class="modal-message"></div>
+                        <div class="modal-actions">
+                            <button id="modalOkBtn" class="modal-btn">확인</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/signup.js"></script>
+</body>
+</html>
