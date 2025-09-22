@@ -10,8 +10,10 @@ WB Education Task Management System은 교육 업무를 효율적으로 관리�
 - 🚀 **Redis ZSet 랭킹**: 실시간 "신청자 많은순", "신청률 높은순" 정렬
 - ⚡ **동시성 제어**: Lua Script 원자적 처리로 수천명 동시 신청도 안전 (테스트: 50명 검증)
 - 🔄 **하이브리드 시스템**: 1페이지 초고속 응답 + 2페이지 정확한 데이터
+- ⚡ **하이브리드 비동기**: Redis 동기 + 핵심 DB 동기 + 최적화 비동기로 응답속도 향상
 - 📊 **스케줄러 동기화**: Redis-DB 자동 정합성 보장
 - 🎯 **성능 최적화**: N+1 문제 해결, 인덱스 최적화, 40개 버퍼존
+- 🔮 **확장성 설계**: Kafka 마이그레이션 준비된 이벤트 기반 아키텍처
 
 ## 🚀 기술 스택
 
@@ -45,8 +47,10 @@ WB Education Task Management System은 교육 업무를 효율적으로 관리�
 ├── 🛡️ 버퍼존 (21-40위): 수강취소 대비 안정성 확보
 └── 📚 2페이지+ (41위~): DB 조회 - 정확한 데이터
 
-🔄 동시성 제어
-├── Redis Lua Script: 원자적 수강신청/취소
+🔄 비동기 처리 아키텍처
+├── Redis Lua Script: 동시성 제어 (동기)
+├── 즉시 응답: 클라이언트 대기시간 최소화
+├── 비동기 DB 처리: Enrollment 저장 + currentStudents 업데이트
 ├── Distributed Lock: 스케줄러 중복 실행 방지
 └── TTL 기반 캐시: 2분 자동 만료 (개발용)
 ```
@@ -424,6 +428,62 @@ CREATE UNIQUE INDEX uk_member_phone ON members (phone_number);
 - **정렬 최적화**: ORDER BY 절에 사용되는 컬럼들
 - **조인 최적화**: 외래키 역할을 하는 컬럼들
 
+### ⚡ 비동기 처리 아키텍처
+
+#### 고성능 수강신청 플로우
+```
+🎯 하이브리드 수강신청 처리 과정 (응답속도 향상)
+
+1️⃣ Redis Lua Script (동기)
+   ├── 동시성 제어: 원자적 정원 확인
+   ├── 중복 신청 방지: 학생-강의 조합 체크
+   └── 즉시 성공/실패 판단
+
+2️⃣ 핵심 DB 저장 (동기)
+   ├── Enrollment 엔티티 저장
+   ├── enrollmentId 즉시 확보
+   └── 후속 비즈니스 로직 처리 가능
+
+3️⃣ 클라이언트 응답 (즉시 완료)
+   ├── 실제 Enrollment 객체로 응답
+   ├── enrollmentId 포함된 완전한 데이터
+   └── 즉시 후속 처리 가능 (이메일, 결제 등)
+
+4️⃣ 비동기 최적화 처리 (백그라운드)
+   ├── @Async("enrollmentTaskExecutor") 실행
+   ├── Course.currentStudents 업데이트
+   └── Redis ZSet 랭킹 업데이트
+
+5️⃣ 장애 격리 및 복구
+   ├── 비동기 작업 실패 시 로그 기록
+   ├── 스케줄러가 1분마다 데이터 보정
+   └── 최종 일관성 보장
+```
+
+#### 이벤트 기반 확장성 설계
+```java
+// 현재: @Async 기반 (단일 서버)
+@Async("enrollmentTaskExecutor")
+public CompletableFuture<Enrollment> processEnrollmentAsync(Member member, Course course, Integer newCount)
+
+// 미래: Kafka 기반 (다중 서버 확장 가능)
+kafkaTemplate.send("enrollment-events", EnrollmentEvent.builder()
+    .studentId(member.getId())
+    .courseId(course.getId())
+    .eventType(EnrollmentEventType.CREATED)
+    .build());
+```
+
+#### 성능 최적화 효과
+| 구분 | Before (동기) | After (하이브리드) | 개선 효과 |
+|------|---------------|-------------------|-----------|
+| **응답 시간** | 모든 작업 대기 | 핵심 작업만 대기 | **응답속도 향상** |
+| **enrollmentId** | ✅ 있음 | ✅ 있음 | **비즈니스 연속성** |
+| **후속 처리** | ✅ 가능 | ✅ 즉시 가능 | **사용자 경험 향상** |
+| **동시 처리** | 제한적 | 높음 | **확장성 증대** |
+| **장애 영향** | 전체 실패 | 격리됨 | **안정성 향상** |
+| **확장성** | 단일 서버 | Kafka 준비 | **MSA 대응** |
+
 ### 🔄 데이터 동기화
 
 #### Redis-DB 하이브리드 시스템
@@ -433,7 +493,7 @@ CREATE UNIQUE INDEX uk_member_phone ON members (phone_number);
 │   ├── Redis: Lua Script로 원자적 처리
 │   ├── DB: current_students 실시간 업데이트
 │   └── ZSet: 랭킹 데이터 실시간 반영
-├── 🔄 스케줄러 (5분마다)
+├── 🔄 스케줄러 (1분마다)
 │   ├── Redis 활성 키 스캔
 │   ├── DB 실제 데이터와 비교
 │   └── 불일치 시 자동 보정
@@ -508,10 +568,10 @@ docker logs wb-edutask-redis
 netstat -an | grep 9092
 ```
 
-### 성능 메트릭
-- **ZSet 히트율**: Redis 랭킹 캐시 효율성
-- **동시성 제어**: Lua Script 실행 시간
-- **스케줄러**: DB-Redis 동기화 주기 및 보정 건수
+### 성능 모니터링
+- **ZSet 활용도**: 1페이지 요청 시 ZSet 사용 여부 로깅
+- **동시성 제어**: Lua Script 기반 원자적 처리
+- **스케줄러**: DB-Redis 동기화 (1분마다) 및 보정 건수 로깅
 
 ## ✅ 구현 완료 기능
 
@@ -523,6 +583,7 @@ netstat -an | grep 9092
 ### 🚀 추가 구현 기능 (고급 기능)
 - ✅ **Redis 동시성 제어**: Lua Script 기반 원자적 수강신청 처리
 - ✅ **실시간 랭킹 시스템**: ZSet 기반 신청자 많은순/신청률 높은순 정렬
+- ✅ **비동기 처리 아키텍처**: Redis 동기 + DB 비동기로 응답속도 향상
 - ✅ **하이브리드 페이징**: 1페이지 ZSet, 2페이지+ DB 조회로 성능 최적화
 - ✅ **회원 관리 고도화**: 검색, 필터링, 페이징 지원
 - ✅ **신청 현황 관리**: 학생별 수강내역 조회, 취소 기능
@@ -615,9 +676,11 @@ netstat -an | grep 9092
 ### 🎉 최신 업데이트 (v2.0) - 과제 요구사항 대비 추가 구현
 - **🚀 Redis ZSet 랭킹**: 기본 정렬을 넘어 실시간 랭킹 시스템 구현
 - **⚡ 동시성 제어**: Lua Script 원자적 처리로 수천명 동시 처리 가능 (테스트: 50명 검증)
+- **⚡ 비동기 처리**: Redis 동기 + DB 비동기로 응답속도 향상
 - **🔄 40개 버퍼존**: 수강취소 시에도 순위 정확성 보장하는 고급 알고리즘
 - **📊 하이브리드 시스템**: 1페이지 초고속 + 2페이지 정확성 보장
 - **🎯 회원 관리 고도화**: 기본 CRUD를 넘어 검색/필터링/페이징 지원
+- **🔮 확장성 설계**: Kafka 마이그레이션 준비된 이벤트 기반 아키텍처
 - **🔧 스케줄러 동기화**: Redis-DB 정합성 자동 보장 시스템
 - **⚙️ 성능 최적화**: N+1 문제 해결, 인덱스 최적화, 배치 처리
 
