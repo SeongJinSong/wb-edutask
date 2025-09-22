@@ -465,44 +465,4 @@ public class EnrollmentService {
             failedEnrollments
         );
     }
-    
-    
-    
-    /**
-     * 취소 큐 결과를 처리하여 DB에 저장합니다
-     * 
-     * @param result 큐 결과
-     * @param enrollmentId 수강신청 ID
-     */
-    @Transactional
-    public void processCancelQueueResult(Map<String, Object> result, Long enrollmentId) {
-        try {
-            Boolean success = Boolean.valueOf(result.get("success").toString());
-            String message = (String) result.get("message");
-            String reason = (String) result.get("reason");
-            
-            if (!success) {
-                String koreanMessage = redisConcurrencyService.convertRedisMessageToKorean(message);
-                throw new RuntimeException(koreanMessage);
-            }
-            
-            // Redis에서 성공한 경우에만 DB에 실제 취소 처리
-            Enrollment enrollment = enrollmentRepository.findById(enrollmentId)
-                    .orElseThrow(() -> new RuntimeException("수강신청을 찾을 수 없습니다: " + enrollmentId));
-            
-            enrollment.cancel(reason);
-            enrollmentRepository.save(enrollment);
-            
-            // 강의 정보 (로그용)
-            Course course = enrollment.getCourse();
-            
-            log.info("수강신청 취소 DB 저장 완료 - EnrollmentId: {}, StudentId: {}, CourseId: {}", 
-                    enrollmentId, enrollment.getStudent().getId(), course.getId());
-            
-        } catch (Exception e) {
-            log.error("취소 큐 결과 처리 실패 - EnrollmentId: {}, Error: {}", enrollmentId, e.getMessage(), e);
-            throw new RuntimeException("취소 큐 결과 처리 실패: " + e.getMessage(), e);
-        }
-    }
-    
 }

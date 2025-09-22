@@ -12,7 +12,6 @@ import com.wb.edutask.entity.Member;
 import com.wb.edutask.enums.CourseStatus;
 import com.wb.edutask.enums.MemberType;
 import com.wb.edutask.repository.CourseRepository;
-import com.wb.edutask.repository.EnrollmentRepository;
 import com.wb.edutask.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 
@@ -30,9 +29,8 @@ public class CourseService {
     
     private final CourseRepository courseRepository;
     private final MemberRepository memberRepository;
-    private final EnrollmentRepository enrollmentRepository;
-    
-    
+
+
     /**
      * 새로운 강의를 생성합니다
      * 

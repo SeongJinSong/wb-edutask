@@ -141,27 +141,6 @@ public class CourseApiController {
     }
     
     /**
-     * 정렬 기준 유효성을 검증합니다
-     * 
-     * @param sortBy 정렬 기준
-     * @return 유효한 정렬 기준
-     */
-    private String validateSortBy(String sortBy) {
-        if (sortBy == null) {
-            return "recent";
-        }
-        
-        switch (sortBy.toLowerCase()) {
-            case "recent":
-            case "applicants":
-            case "remaining":
-                return sortBy.toLowerCase();
-            default:
-                return "recent";
-        }
-    }
-    
-    /**
      * 강의명으로 강의를 검색합니다
      * 
      * @param keyword 검색 키워드
@@ -232,71 +211,6 @@ public class CourseApiController {
             return ResponseEntity.ok(course);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().build();
-        }
-    }
-    
-    /**
-     * 강의 통계 정보를 조회합니다
-     * 
-     * @return 강의 통계 정보
-     */
-    @GetMapping("/stats")
-    public ResponseEntity<CourseStats> getCourseStats() {
-        // TODO: 통계 서비스 구현 후 연결
-        CourseStats stats = new CourseStats();
-        return ResponseEntity.ok(stats);
-    }
-    
-    /**
-     * 강의 통계 정보를 나타내는 내부 클래스
-     */
-    public static class CourseStats {
-        private long totalCourses = 0;
-        private long scheduledCourses = 0;
-        private long inProgressCourses = 0;
-        private long completedCourses = 0;
-        private long availableCoursesForEnrollment = 0;
-        
-        // Getter 메서드들
-        public long getTotalCourses() {
-            return totalCourses;
-        }
-        
-        public long getScheduledCourses() {
-            return scheduledCourses;
-        }
-        
-        public long getInProgressCourses() {
-            return inProgressCourses;
-        }
-        
-        public long getCompletedCourses() {
-            return completedCourses;
-        }
-        
-        public long getAvailableCoursesForEnrollment() {
-            return availableCoursesForEnrollment;
-        }
-        
-        // Setter 메서드들
-        public void setTotalCourses(long totalCourses) {
-            this.totalCourses = totalCourses;
-        }
-        
-        public void setScheduledCourses(long scheduledCourses) {
-            this.scheduledCourses = scheduledCourses;
-        }
-        
-        public void setInProgressCourses(long inProgressCourses) {
-            this.inProgressCourses = inProgressCourses;
-        }
-        
-        public void setCompletedCourses(long completedCourses) {
-            this.completedCourses = completedCourses;
-        }
-        
-        public void setAvailableCoursesForEnrollment(long availableCoursesForEnrollment) {
-            this.availableCoursesForEnrollment = availableCoursesForEnrollment;
         }
     }
 }

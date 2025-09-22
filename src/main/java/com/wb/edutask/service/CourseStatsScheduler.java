@@ -84,7 +84,7 @@ public class CourseStatsScheduler {
         // Redis에서 활성 강의 키 조회 (course:숫자 패턴만)
         Set<String> allCourseKeys = stringRedisTemplate.keys("course:*");
         
-        if (allCourseKeys == null || allCourseKeys.isEmpty()) {
+        if (allCourseKeys.isEmpty()) {
             log.debug("Redis에 활성 강의가 없습니다. 보정 불필요");
             return;
         }
@@ -157,7 +157,7 @@ public class CourseStatsScheduler {
             Long result = stringRedisTemplate.execute(unlockScript, 
                 java.util.Collections.singletonList(SYNC_LOCK_KEY), lockValue);
             
-            if (result != null && result == 1) {
+            if (result == 1) {
                 log.debug("🔓 분산락 해제 성공");
             } else {
                 log.warn("분산락 해제 실패 - 이미 만료되었거나 다른 서버가 해제함");

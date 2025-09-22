@@ -93,7 +93,7 @@ public class CourseRankingService {
         // "course:1" → 1L 변환
         List<Long> zsetCourseIds = courseKeys.stream()
             .map(key -> Long.parseLong(key.replace("course:", "")))
-            .collect(Collectors.toList());
+            .toList();
         
         // ZSet 데이터가 첫 페이지 크기보다 적으면 ZSet에 추가 데이터 넣기
         List<Long> allCourseIds = new ArrayList<>(zsetCourseIds);
@@ -111,7 +111,7 @@ public class CourseRankingService {
             List<Course> additionalCourses = remainingCourses.getContent().stream()
                 .filter(course -> !zsetCourseIds.contains(course.getId()))
                 .limit(remainingCount)
-                .collect(Collectors.toList());
+                .toList();
             
             // 선별된 강의들을 ZSet에 추가 (@BatchSize로 N+1 문제 자동 해결)
             for (Course course : additionalCourses) {
@@ -119,7 +119,7 @@ public class CourseRankingService {
                 stringRedisTemplate.opsForZSet().add(rankingKey, "course:" + course.getId(), score);
                 allCourseIds.add(course.getId());
                 
-                log.debug("ZSet에 강의 추가 - CourseId: {}, Score: {:.2f}", course.getId(), score);
+                log.debug("ZSet에 강의 추가 - CourseId: {}, Score: {}", course.getId(), score);
             }
             
             // ZSet 크기 제한 (상위 40개만 유지, 수강취소 대비 버퍼존)
@@ -139,7 +139,7 @@ public class CourseRankingService {
         List<Course> orderedCourses = allCourseIds.stream()
             .map(courseMap::get)
             .filter(Objects::nonNull)
-            .collect(Collectors.toList());
+            .toList();
         
         // CourseResponseDto 변환
         List<CourseResponseDto> courseDtos = orderedCourses.stream()
@@ -173,7 +173,7 @@ public class CourseRankingService {
             // 2. 신청률 높은순 처리 (ZSet에 이미 있는 경우만 업데이트)
             updateZSetIfRelevant(RANKING_RATE, courseKey, rate);
             
-            log.debug("강의 랭킹 업데이트 완료 - CourseId: {}, Students: {}, Rate: {:.2f}", 
+            log.debug("강의 랭킹 업데이트 완료 - CourseId: {}, Students: {}, Rate: {}",
                     courseId, currentStudents, rate);
             
         } catch (Exception e) {
@@ -196,7 +196,7 @@ public class CourseRankingService {
             if (existingScore != null) {
                 // 이미 있으면 점수 업데이트
                 stringRedisTemplate.opsForZSet().add(zsetKey, courseKey, score);
-                log.debug("ZSet 업데이트 - Key: {}, Course: {}, Score: {:.2f} (이전: {:.2f})", 
+                log.debug("ZSet 업데이트 - Key: {}, Course: {}, Score: {} (이전: {})",
                         zsetKey, courseKey, score, existingScore);
                 
                 // 점수 감소 시에도 교체하지 않음 (성능 우선)
@@ -208,7 +208,7 @@ public class CourseRankingService {
                 if (zsetSize == null || zsetSize < ZSET_MAX_SIZE) {
                     // ZSet에 여유가 있으면 추가
                     stringRedisTemplate.opsForZSet().add(zsetKey, courseKey, score);
-                    log.debug("ZSet 추가 (여유공간) - Key: {}, Course: {}, Score: {:.2f}", zsetKey, courseKey, score);
+                    log.debug("ZSet 추가 (여유공간) - Key: {}, Course: {}, Score: {}", zsetKey, courseKey, score);
                 } else {
                     // ZSet이 가득 찬 경우, 최하위 점수와 비교
                     Set<String> lowestScoreSet = stringRedisTemplate.opsForZSet().range(zsetKey, 0, 0);
@@ -223,7 +223,7 @@ public class CourseRankingService {
                             log.debug("ZSet 교체 - Key: {}, 제거: {} ({}), 추가: {} ({})", 
                                     zsetKey, lowestCourse, lowestScore, courseKey, score);
                         } else {
-                            log.debug("ZSet 추가 불가 (점수 부족) - Key: {}, Course: {}, Score: {:.2f}, 최하위: {:.2f}", 
+                            log.debug("ZSet 추가 불가 (점수 부족) - Key: {}, Course: {}, Score: {}, 최하위: {}",
                                     zsetKey, courseKey, score, lowestScore != null ? lowestScore : 0.0);
                         }
                     }
@@ -238,26 +238,6 @@ public class CourseRankingService {
         }
     }
     
-    
-    /**
-     * 강의를 랭킹에서 제거합니다 (강의 삭제 시 호출)
-     * 
-     * @param courseId 강의 ID
-     */
-    public void removeCourseFromRanking(Long courseId) {
-        try {
-            String courseKey = "course:" + courseId;
-            
-            stringRedisTemplate.opsForZSet().remove(RANKING_APPLICANTS, courseKey);
-            stringRedisTemplate.opsForZSet().remove(RANKING_RATE, courseKey);
-            
-            log.debug("강의 랭킹에서 제거 완료 - CourseId: {}", courseId);
-            
-        } catch (Exception e) {
-            log.error("강의 랭킹 제거 실패 - CourseId: {}, Error: {}", courseId, e.getMessage(), e);
-        }
-    }
-    
     /**
      * 정렬 기준에 따른 점수를 계산합니다 (@BatchSize로 N+1 문제 자동 해결)
      * 
@@ -266,16 +246,14 @@ public class CourseRankingService {
      * @return 계산된 점수
      */
     private double calculateScore(String sortBy, Course course) {
-        switch (sortBy) {
-            case "applicants":
-                return course.getCurrentStudents(); // 신청자 수 (@BatchSize로 최적화)
-            case "remaining":
+        return switch (sortBy) {
+            case "applicants" -> course.getCurrentStudents(); // 신청자 수 (@BatchSize로 최적화)
+            case "remaining" ->
                 // 신청률 (currentStudents / maxStudents)
-                return course.getMaxStudents() > 0 ? 
-                    (double) course.getCurrentStudents() / course.getMaxStudents() : 0.0;
-            default:
-                return 0.0; // recent는 ZSet 사용 안함
-        }
+                    course.getMaxStudents() > 0 ?
+                            (double) course.getCurrentStudents() / course.getMaxStudents() : 0.0;
+            default -> 0.0; // recent는 ZSet 사용 안함
+        };
     }
     
     /**
@@ -327,14 +305,11 @@ public class CourseRankingService {
      * @return ZSet 키
      */
     private String getRankingKey(String sortBy) {
-        switch (sortBy) {
-            case "applicants":
-                return RANKING_APPLICANTS;
-            case "remaining":
-                return RANKING_RATE;
-            default:
-                throw new IllegalArgumentException("지원하지 않는 정렬 기준: " + sortBy);
-        }
+        return switch (sortBy) {
+            case "applicants" -> RANKING_APPLICANTS;
+            case "remaining" -> RANKING_RATE;
+            default -> throw new IllegalArgumentException("지원하지 않는 정렬 기준: " + sortBy);
+        };
     }
     
     /**
@@ -386,13 +361,10 @@ public class CourseRankingService {
      * @return DB 정렬 필드명
      */
     private String getSortField(String sortBy) {
-        switch (sortBy) {
-            case "applicants":
-                return "currentStudents";
-            case "remaining":
-                return "currentStudents"; // 신청률도 currentStudents 기준으로 계산
-            default:
-                return "createdAt";
-        }
+        return switch (sortBy) {
+            case "applicants" -> "currentStudents";
+            case "remaining" -> "currentStudents"; // 신청률도 currentStudents 기준으로 계산
+            default -> "createdAt";
+        };
     }
 }

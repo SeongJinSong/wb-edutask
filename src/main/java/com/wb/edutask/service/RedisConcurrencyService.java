@@ -160,7 +160,7 @@ public class RedisConcurrencyService {
                 break;
             }
             
-            if (result != null && result.size() >= 3) {
+            if (result.size() >= 3) {
                 Long success = (Long) result.get(0);
                 String message = (String) result.get(1);
                 Long newCount = (Long) result.get(2);
