@@ -1,6 +1,7 @@
 package com.wb.edutask.controller;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -35,8 +36,8 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/api/v1/courses")
 @Validated
 @RequiredArgsConstructor
-public class CourseController {
-    
+public class CourseApiController {
+
     private final CourseService courseService;
     
     
@@ -119,17 +120,43 @@ public class CourseController {
     }
     
     /**
-     * 수강 신청 가능한 강의 목록을 조회합니다
+     * 수강 신청 가능한 강의 목록을 조회합니다 (정렬 옵션 포함, N+1 문제 해결)
      * 
+     * @param sortBy 정렬 기준 (recent, applicants, remaining)
      * @param pageable 페이징 정보
      * @return 수강 신청 가능한 강의 목록
      */
     @GetMapping("/available")
     public ResponseEntity<Page<CourseResponseDto>> getAvailableCoursesForEnrollment(
-            @PageableDefault(size = 10, sort = "startDate", direction = Sort.Direction.ASC) Pageable pageable) {
+            @RequestParam(defaultValue = "recent") String sortBy,
+            @PageableDefault(size = 20) Pageable pageable) {
         
-        Page<CourseResponseDto> courses = courseService.getAvailableCoursesForEnrollment(pageable);
+        // 정렬은 Repository 쿼리에서 처리하므로 Pageable의 정렬 정보는 무시
+        Pageable unsortedPageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
+        
+        Page<CourseResponseDto> courses = courseService.getAvailableCoursesForEnrollmentWithSort(sortBy, unsortedPageable);
         return ResponseEntity.ok(courses);
+    }
+    
+    /**
+     * 정렬 기준 유효성을 검증합니다
+     * 
+     * @param sortBy 정렬 기준
+     * @return 유효한 정렬 기준
+     */
+    private String validateSortBy(String sortBy) {
+        if (sortBy == null) {
+            return "recent";
+        }
+        
+        switch (sortBy.toLowerCase()) {
+            case "recent":
+            case "applicants":
+            case "remaining":
+                return sortBy.toLowerCase();
+            default:
+                return "recent";
+        }
     }
     
     /**

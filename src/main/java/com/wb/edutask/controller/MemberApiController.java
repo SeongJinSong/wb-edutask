@@ -18,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 
 /**
  * 회원 관리를 위한 REST API 컨트롤러
+ * API 전용 컨트롤러로 JSON 응답만 처리
  * 
  * @author WB Development Team
  * @version 1.0.0
@@ -25,9 +26,9 @@ import lombok.RequiredArgsConstructor;
  */
 @RestController
 @RequestMapping("/api/v1/members")
-@CrossOrigin(origins = "*") // CORS 설정 (개발용)
+@CrossOrigin(origins = "http://localhost:8080") // CORS 설정 (개발용)
 @RequiredArgsConstructor
-public class MemberController {
+public class MemberApiController {
     
     private final MemberService memberService;
     
@@ -81,7 +82,7 @@ public class MemberController {
      * @return 회원 정보
      */
     @GetMapping("/{id}")
-    public ResponseEntity<?> getMemberById(@PathVariable Long id) {
+    public ResponseEntity<?> getMemberById(@PathVariable("id") Long id) {
         try {
             Optional<MemberResponseDto> member = memberService.findMemberById(id);
             if (member.isPresent()) {

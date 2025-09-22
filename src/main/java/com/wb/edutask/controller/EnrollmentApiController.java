@@ -31,6 +31,7 @@ import lombok.RequiredArgsConstructor;
 
 /**
  * 수강신청 관리를 위한 REST API 컨트롤러
+ * API 전용 컨트롤러로 JSON 응답만 처리
  * 
  * @author WB Development Team
  * @version 1.0.0
@@ -40,7 +41,7 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/api/v1/enrollments")
 @Validated
 @RequiredArgsConstructor
-public class EnrollmentController {
+public class EnrollmentApiController {
     
     private final EnrollmentService enrollmentService;
     
