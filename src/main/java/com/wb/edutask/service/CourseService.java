@@ -85,8 +85,10 @@ public class CourseService {
     public CourseResponseDto getCourseById(Long courseId) {
         Course course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new RuntimeException("강의를 찾을 수 없습니다: " + courseId));
-        
-        return CourseResponseDto.from(course);
+
+        // 실제 수강인원 계산 (APPLIED, APPROVED 상태)
+        int currentEnrollments = (int) enrollmentRepository.countActiveEnrollmentsByCourse(course.getId());
+        return CourseResponseDto.from(course, currentEnrollments);
     }
     
     /**
@@ -98,7 +100,11 @@ public class CourseService {
     @Transactional(readOnly = true)
     public Page<CourseResponseDto> getAllCourses(Pageable pageable) {
         Page<Course> courses = courseRepository.findAll(pageable);
-        return courses.map(CourseResponseDto::from);
+        return courses.map(course -> {
+            // 실제 수강인원 계산 (APPLIED, APPROVED 상태)
+            int currentEnrollments = (int) enrollmentRepository.countActiveEnrollmentsByCourse(course.getId());
+            return CourseResponseDto.from(course, currentEnrollments);
+        });
     }
     
     /**
@@ -128,7 +134,7 @@ public class CourseService {
     }
     
     /**
-     * 수강 신청 가능한 강의 목록을 조회합니다
+     * 수강 신청 가능한 강의 목록을 조회합니다 (정렬 기준 포함)
      * 
      * @param pageable 페이징 정보
      * @return 수강 신청 가능한 강의 목록
@@ -136,7 +142,28 @@ public class CourseService {
     @Transactional(readOnly = true)
     public Page<CourseResponseDto> getAvailableCoursesForEnrollment(Pageable pageable) {
         Page<Course> courses = courseRepository.findAvailableCoursesForEnrollment(pageable);
-        return courses.map(CourseResponseDto::from);
+        return courses.map(course -> {
+            // 실제 수강인원 계산 (APPLIED, APPROVED 상태)
+            int currentEnrollments = (int) enrollmentRepository.countActiveEnrollmentsByCourse(course.getId());
+            return CourseResponseDto.from(course, currentEnrollments);
+        });
+    }
+    
+    /**
+     * 수강 신청 가능한 강의 목록을 정렬 기준에 따라 조회합니다 (N+1 문제 해결)
+     * 
+     * @param sortBy 정렬 기준 (recent, applicants, remaining)
+     * @param pageable 페이징 정보
+     * @return 수강 신청 가능한 강의 목록
+     */
+    @Transactional(readOnly = true)
+    public Page<CourseResponseDto> getAvailableCoursesForEnrollmentWithSort(String sortBy, Pageable pageable) {
+        Page<Course> courses = courseRepository.findAvailableCoursesForEnrollmentWithSort(sortBy, pageable);
+        return courses.map(course -> {
+            // 실제 수강인원 계산 (APPLIED, APPROVED 상태)
+            int currentEnrollments = (int) enrollmentRepository.countActiveEnrollmentsByCourse(course.getId());
+            return CourseResponseDto.from(course, currentEnrollments);
+        });
     }
     
     /**

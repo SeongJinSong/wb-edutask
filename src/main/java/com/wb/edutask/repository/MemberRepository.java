@@ -1,10 +1,11 @@
 package com.wb.edutask.repository;
 
-import com.wb.edutask.entity.Member;
+import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
-
-import java.util.Optional;
+import com.wb.edutask.entity.Member;
+import com.wb.edutask.enums.MemberType;
 
 /**
  * 회원 데이터 접근을 위한 Repository 인터페이스
@@ -47,4 +48,12 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
      * @return 존재 여부
      */
     boolean existsByPhoneNumber(String phoneNumber);
+    
+    /**
+     * 회원 유형으로 회원 목록을 조회합니다
+     * 
+     * @param memberType 회원 유형
+     * @return 해당 유형의 회원 목록
+     */
+    List<Member> findByMemberType(MemberType memberType);
 }

@@ -75,13 +75,28 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
     Page<Course> findByCourseNameContainingIgnoreCase(String keyword, Pageable pageable);
     
     /**
-     * 수강 신청 가능한 강의 목록을 조회합니다 (정원 미달 + 개설예정 상태)
+     * 수강 신청 가능한 강의 목록을 조회합니다 (N+1 문제 해결을 위한 Fetch Join 사용)
      * 
      * @param pageable 페이징 정보
      * @return 강의 목록
      */
-    @Query("SELECT c FROM Course c WHERE c.status IN ('SCHEDULED', 'IN_PROGRESS')")
+    @Query("SELECT c FROM Course c JOIN FETCH c.instructor WHERE c.status IN ('SCHEDULED', 'IN_PROGRESS')")
     Page<Course> findAvailableCoursesForEnrollment(Pageable pageable);
+    
+    /**
+     * 수강 신청 가능한 강의 목록을 정렬 기준에 따라 조회합니다 (N+1 문제 해결)
+     * 
+     * @param sortBy 정렬 기준 (recent, applicants, remaining)
+     * @param pageable 페이징 정보
+     * @return 강의 목록
+     */
+    @Query("SELECT c FROM Course c JOIN FETCH c.instructor " +
+           "WHERE c.status IN ('SCHEDULED', 'IN_PROGRESS') " +
+           "ORDER BY " +
+           "CASE WHEN :sortBy = 'recent' THEN c.createdAt END DESC, " +
+           "CASE WHEN :sortBy = 'applicants' THEN c.courseName END ASC, " +
+           "CASE WHEN :sortBy = 'remaining' THEN c.startDate END ASC")
+    Page<Course> findAvailableCoursesForEnrollmentWithSort(@Param("sortBy") String sortBy, Pageable pageable);
     
     /**
      * 특정 기간 내에 시작하는 강의 목록을 조회합니다
