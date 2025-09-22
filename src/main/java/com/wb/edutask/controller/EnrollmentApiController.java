@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -25,7 +24,6 @@ import com.wb.edutask.dto.EnrollmentResponseDto;
 import com.wb.edutask.enums.EnrollmentStatus;
 import com.wb.edutask.service.EnrollmentService;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 
@@ -150,99 +148,7 @@ public class EnrollmentApiController {
         }
     }
     
-    /**
-     * 수강신청을 승인합니다 (관리자/강사용)
-     * 
-     * @param enrollmentId 수강신청 ID
-     * @return 승인된 수강신청 정보
-     */
-    @PutMapping("/{enrollmentId}/approve")
-    public ResponseEntity<EnrollmentResponseDto> approveEnrollment(
-            @PathVariable @Positive(message = "수강신청 ID는 양수여야 합니다") Long enrollmentId) {
-        
-        try {
-            EnrollmentResponseDto enrollment = enrollmentService.approveEnrollment(enrollmentId);
-            return ResponseEntity.ok(enrollment);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().build();
-        }
-    }
     
-    /**
-     * 수강신청을 거절합니다 (관리자/강사용)
-     * 
-     * @param enrollmentId 수강신청 ID
-     * @param reason 거절 사유
-     * @return 거절된 수강신청 정보
-     */
-    @PutMapping("/{enrollmentId}/reject")
-    public ResponseEntity<EnrollmentResponseDto> rejectEnrollment(
-            @PathVariable @Positive(message = "수강신청 ID는 양수여야 합니다") Long enrollmentId,
-            @RequestParam @NotBlank(message = "거절 사유는 필수입니다") String reason) {
-        
-        try {
-            EnrollmentResponseDto enrollment = enrollmentService.rejectEnrollment(enrollmentId, reason);
-            return ResponseEntity.ok(enrollment);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().build();
-        }
-    }
-    
-    /**
-     * 수강신청 통계 정보를 조회합니다
-     * 
-     * @return 수강신청 통계 정보
-     */
-    @GetMapping("/stats")
-    public ResponseEntity<EnrollmentStats> getEnrollmentStats() {
-        // TODO: 통계 서비스 구현 후 연결
-        EnrollmentStats stats = new EnrollmentStats();
-        return ResponseEntity.ok(stats);
-    }
-    
-    /**
-     * 수강신청 통계 정보를 나타내는 내부 클래스
-     */
-    public static class EnrollmentStats {
-        private long totalEnrollments = 0;
-        private long approvedEnrollments = 0;
-        private long pendingEnrollments = 0;
-        private long cancelledEnrollments = 0;
-        
-        // Getter 메서드들
-        public long getTotalEnrollments() {
-            return totalEnrollments;
-        }
-        
-        public long getApprovedEnrollments() {
-            return approvedEnrollments;
-        }
-        
-        public long getPendingEnrollments() {
-            return pendingEnrollments;
-        }
-        
-        public long getCancelledEnrollments() {
-            return cancelledEnrollments;
-        }
-        
-        // Setter 메서드들
-        public void setTotalEnrollments(long totalEnrollments) {
-            this.totalEnrollments = totalEnrollments;
-        }
-        
-        public void setApprovedEnrollments(long approvedEnrollments) {
-            this.approvedEnrollments = approvedEnrollments;
-        }
-        
-        public void setPendingEnrollments(long pendingEnrollments) {
-            this.pendingEnrollments = pendingEnrollments;
-        }
-        
-        public void setCancelledEnrollments(long cancelledEnrollments) {
-            this.cancelledEnrollments = cancelledEnrollments;
-        }
-    }
     
     /**
      * 여러 강의에 동시 수강신청을 처리합니다

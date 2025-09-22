@@ -279,12 +279,23 @@ public class EnrollmentService {
         // 4. 강의의 현재 수강생 수 감소
         Course course = enrollment.getCourse();
         
-        // 5. Redis에서 수강생 수 감소 (동시성 제어를 위해)
+        // 5. Redis에서 수강생 수 처리 (동시성 제어를 위해)
         try {
-            redisConcurrencyService.decreaseCourseStudents(course.getId());
-            log.info("Redis 수강생 수 감소 완료 - CourseId: {}", course.getId());
+            // Redis에 강의 정보가 있으면 감소, 없으면 DB 기준으로 동기화만
+            String courseKey = "course:" + course.getId();
+            String existingCurrentStudents = (String) stringRedisTemplate.opsForHash().get(courseKey, "currentStudents");
+            
+            if (existingCurrentStudents != null) {
+                // Redis에 데이터가 있으면 감소만
+                redisConcurrencyService.decreaseCourseStudents(course.getId());
+                log.info("Redis 수강생 수 감소 완료 - CourseId: {}", course.getId());
+            } else {
+                // Redis에 데이터가 없으면 DB 기준으로 동기화만 (감소 없이)
+                redisConcurrencyService.syncCourseToRedisIfNeeded(course.getId());
+                log.info("Redis 강의 정보 동기화 완료 - CourseId: {}", course.getId());
+            }
         } catch (Exception e) {
-            log.warn("Redis 수강생 수 감소 실패 - CourseId: {}, Error: {}", course.getId(), e.getMessage());
+            log.warn("Redis 처리 실패 - CourseId: {}, Error: {}", course.getId(), e.getMessage());
             // Redis 실패는 치명적이지 않으므로 계속 진행
         }
         
@@ -294,66 +305,6 @@ public class EnrollmentService {
         return EnrollmentResponseDto.from(savedEnrollment);
     }
     
-    /**
-     * 수강신청을 승인합니다 (관리자/강사용)
-     * 
-     * @param enrollmentId 수강신청 ID
-     * @return 승인된 수강신청 정보
-     * @throws RuntimeException 수강신청을 찾을 수 없거나 승인할 수 없는 경우
-     */
-    public EnrollmentResponseDto approveEnrollment(Long enrollmentId) {
-        Enrollment enrollment = enrollmentRepository.findById(enrollmentId)
-                .orElseThrow(() -> new RuntimeException("수강신청을 찾을 수 없습니다: " + enrollmentId));
-        
-        if (enrollment.getStatus() != EnrollmentStatus.APPLIED) {
-            throw new RuntimeException("신청 상태의 수강신청만 승인할 수 있습니다");
-        }
-        
-        Course course = enrollment.getCourse();
-        
-        // 정원 확인 (실시간 DB 조회)
-        long currentEnrollments = enrollmentRepository.countActiveEnrollmentsByCourse(course.getId());
-        if (currentEnrollments >= course.getMaxStudents()) {
-            throw new RuntimeException("강의 정원이 초과되었습니다");
-        }
-        
-        enrollment.approve();
-        Enrollment savedEnrollment = enrollmentRepository.save(enrollment);
-        
-        return EnrollmentResponseDto.from(savedEnrollment);
-    }
-    
-    /**
-     * 수강신청을 거절합니다 (관리자/강사용)
-     * 
-     * @param enrollmentId 수강신청 ID
-     * @param reason 거절 사유
-     * @return 거절된 수강신청 정보
-     * @throws RuntimeException 수강신청을 찾을 수 없거나 거절할 수 없는 경우
-     */
-    public EnrollmentResponseDto rejectEnrollment(Long enrollmentId, String reason) {
-        Enrollment enrollment = enrollmentRepository.findById(enrollmentId)
-                .orElseThrow(() -> new RuntimeException("수강신청을 찾을 수 없습니다: " + enrollmentId));
-        
-        if (enrollment.getStatus() != EnrollmentStatus.APPLIED) {
-            throw new RuntimeException("신청 상태의 수강신청만 거절할 수 있습니다");
-        }
-        
-        enrollment.reject(reason);
-        Enrollment savedEnrollment = enrollmentRepository.save(enrollment);
-        
-        // Redis에서 수강생 수 감소 (거절 시에도 필요)
-        Course course = enrollment.getCourse();
-        try {
-            redisConcurrencyService.decreaseCourseStudents(course.getId());
-            log.info("Redis 수강생 수 감소 완료 (거절) - CourseId: {}", course.getId());
-        } catch (Exception e) {
-            log.warn("Redis 수강생 수 감소 실패 (거절) - CourseId: {}, Error: {}", course.getId(), e.getMessage());
-            // Redis 실패는 치명적이지 않으므로 계속 진행
-        }
-        
-        return EnrollmentResponseDto.from(savedEnrollment);
-    }
     
     /**
      * 수강신청 가능 여부를 검증합니다 (정원 제외)

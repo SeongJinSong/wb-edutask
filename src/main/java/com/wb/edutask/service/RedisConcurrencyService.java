@@ -29,7 +29,7 @@ import lombok.extern.slf4j.Slf4j;
 public class RedisConcurrencyService {
 
     private static final String COURSE_KEY_PREFIX = "course:";
-    private static final int COURSE_CACHE_TTL_HOURS = 6; // 강의 정보 캐시 TTL (6시간)
+    private static final int COURSE_CACHE_TTL_MINUTES = 2; // 강의 정보 캐시 TTL (2분 - 개발용)
     
     private final StringRedisTemplate stringRedisTemplate;
     private final CourseRepository courseRepository;
@@ -106,10 +106,10 @@ public class RedisConcurrencyService {
                 courseData.put("instructorId", course.getInstructor().getId().toString());
                 
                 stringRedisTemplate.opsForHash().putAll(courseKey, courseData);
-                // 강의 정보에 TTL 설정 (6시간)
-                stringRedisTemplate.expire(courseKey, COURSE_CACHE_TTL_HOURS, TimeUnit.HOURS);
-                log.debug("강의 정보 Redis 동기화 완료: {} (currentStudents: {}, maxStudents: {}, TTL: {}시간)", 
-                        courseId, actualCurrentStudents, course.getMaxStudents(), COURSE_CACHE_TTL_HOURS);
+                // 강의 정보에 TTL 설정 (1분 - 개발용)
+                stringRedisTemplate.expire(courseKey, COURSE_CACHE_TTL_MINUTES, TimeUnit.MINUTES);
+                log.debug("강의 정보 Redis 동기화 완료: {} (currentStudents: {}, maxStudents: {}, TTL: {}분)", 
+                        courseId, actualCurrentStudents, course.getMaxStudents(), COURSE_CACHE_TTL_MINUTES);
             } else {
                 log.debug("Redis에 강의 정보가 이미 존재함 - CourseId: {}, CurrentStudents: {}", 
                         courseId, existingCurrentStudents);

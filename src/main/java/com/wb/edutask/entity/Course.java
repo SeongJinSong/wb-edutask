@@ -78,6 +78,13 @@ public class Course {
     private Member instructor;
     
     /**
+     * 현재 수강인원 (Redis에서 동기화)
+     */
+    @Column(nullable = false)
+    @Builder.Default
+    private Integer currentStudents = 0;
+    
+    /**
      * 수강 정원 (1명 이상 100명 이하)
      */
     @Column(nullable = false)

@@ -199,13 +199,11 @@ public class DataInitializer implements CommandLineRunner {
                 
                 enrolledStudentIds.add(studentId);
                 
-                // 수강신청 상태 랜덤 결정 (90% 승인, 10% 신청중)
-                EnrollmentStatus status = random.nextDouble() < 0.9 ? 
-                    EnrollmentStatus.APPROVED : EnrollmentStatus.APPLIED;
+                // 온라인 강의는 정원이 안 찼으면 무조건 승인
+                EnrollmentStatus status = EnrollmentStatus.APPROVED;
                 
                 LocalDateTime appliedAt = LocalDateTime.now().minusDays(random.nextInt(30));
-                LocalDateTime approvedAt = status == EnrollmentStatus.APPROVED ? 
-                    appliedAt.plusHours(random.nextInt(48)) : null;
+                LocalDateTime approvedAt = appliedAt.plusHours(random.nextInt(48));
                 
                 Enrollment enrollment = Enrollment.builder()
                     .student(student)
@@ -222,12 +220,7 @@ public class DataInitializer implements CommandLineRunner {
         enrollmentRepository.saveAll(enrollments);
         log.info("수강신청 데이터 {}개가 생성되었습니다.", enrollments.size());
         
-        // 통계 정보 출력
-        long approvedCount = enrollments.stream()
-            .mapToLong(e -> e.getStatus() == EnrollmentStatus.APPROVED ? 1 : 0)
-            .sum();
-        long appliedCount = enrollments.size() - approvedCount;
-        
-        log.info("수강신청 통계 - 승인: {}건, 신청중: {}건", approvedCount, appliedCount);
+        // 통계 정보 출력 (모든 수강신청이 승인됨)
+        log.info("수강신청 통계 - 총 승인: {}건", enrollments.size());
     }
 }

@@ -2,6 +2,7 @@ package com.wb.edutask;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * WB Education Task Management System 메인 애플리케이션 클래스
@@ -11,6 +12,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * @since 2025-09-20
  */
 @SpringBootApplication
+@EnableScheduling
 public class WbEdutaskApplication {
 
     /**

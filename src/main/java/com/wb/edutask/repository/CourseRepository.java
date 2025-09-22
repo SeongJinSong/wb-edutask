@@ -5,6 +5,7 @@ import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -94,8 +95,8 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
            "WHERE c.status IN ('SCHEDULED', 'IN_PROGRESS') " +
            "ORDER BY " +
            "CASE WHEN :sortBy = 'recent' THEN c.createdAt END DESC, " +
-           "CASE WHEN :sortBy = 'applicants' THEN c.courseName END ASC, " +
-           "CASE WHEN :sortBy = 'remaining' THEN c.startDate END ASC")
+           "CASE WHEN :sortBy = 'applicants' THEN c.currentStudents END DESC, " +
+           "CASE WHEN :sortBy = 'remaining' THEN (CAST(c.currentStudents AS double) / CAST(c.maxStudents AS double)) END DESC")
     Page<Course> findAvailableCoursesForEnrollmentWithSort(@Param("sortBy") String sortBy, Pageable pageable);
     
     /**
@@ -132,4 +133,15 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
      */
     @Query("SELECT COUNT(c) FROM Course c WHERE c.status IN ('SCHEDULED', 'IN_PROGRESS')")
     long countAvailableCoursesForEnrollment();
+    
+    /**
+     * 강의의 현재 수강인원을 업데이트합니다 (Redis 동기화용)
+     * 
+     * @param courseId 강의 ID
+     * @param currentStudents 현재 수강인원
+     * @return 업데이트된 행 수
+     */
+    @Modifying
+    @Query("UPDATE Course c SET c.currentStudents = :currentStudents WHERE c.id = :courseId")
+    int updateCurrentStudents(@Param("courseId") Long courseId, @Param("currentStudents") Integer currentStudents);
 }

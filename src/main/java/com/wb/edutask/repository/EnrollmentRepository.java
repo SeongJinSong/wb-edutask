@@ -152,11 +152,11 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
     long countApprovedEnrollmentsByStudent(@Param("studentId") Long studentId);
     
     /**
-     * 강의별 활성 수강신청 개수를 조회합니다 (신청 + 승인 상태)
+     * 강의별 승인된 수강신청 개수를 조회합니다 (승인 상태만)
      * 
      * @param courseId 강의 ID
-     * @return 활성 수강신청 개수
+     * @return 승인된 수강신청 개수
      */
-    @Query("SELECT COUNT(e) FROM Enrollment e WHERE e.course.id = :courseId AND e.status IN ('APPLIED', 'APPROVED')")
+    @Query("SELECT COUNT(e) FROM Enrollment e WHERE e.course.id = :courseId AND e.status = 'APPROVED'")
     long countActiveEnrollmentsByCourse(@Param("courseId") Long courseId);
 }
