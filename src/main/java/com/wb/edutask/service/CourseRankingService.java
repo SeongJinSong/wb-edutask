@@ -38,7 +38,8 @@ public class CourseRankingService {
     // ZSet 키 상수
     private static final String RANKING_APPLICANTS = "course:ranking:applicants";
     private static final String RANKING_RATE = "course:ranking:rate";
-    private static final int ZSET_MAX_SIZE = 20; // 상위 20개만 유지
+    private static final int ZSET_MAX_SIZE = 40; // ZSet 최대 크기 (상위 40개, 수강취소 대비 버퍼존)
+    private static final int FIRST_PAGE_SIZE = 20; // 첫 페이지 크기
     private static final int ZSET_TTL_MINUTES = 2; // ZSet TTL: 2분 (개발용)
     
     /**
@@ -87,11 +88,11 @@ public class CourseRankingService {
             .map(key -> Long.parseLong(key.replace("course:", "")))
             .collect(Collectors.toList());
         
-        // ZSet 데이터가 페이지 크기보다 적으면 ZSet에 추가 데이터 넣기
+        // ZSet 데이터가 첫 페이지 크기보다 적으면 ZSet에 추가 데이터 넣기
         List<Long> allCourseIds = new ArrayList<>(zsetCourseIds);
         
-        if (zsetCourseIds.size() < pageable.getPageSize()) {
-            int remainingCount = pageable.getPageSize() - zsetCourseIds.size();
+        if (zsetCourseIds.size() < FIRST_PAGE_SIZE) {
+            int remainingCount = FIRST_PAGE_SIZE - zsetCourseIds.size();
             
             // DB에서 ZSet에 없는 강의들을 정렬 순서대로 가져오기
             Page<Course> remainingCourses = courseRepository.findAvailableCoursesForEnrollmentWithSort(
@@ -114,7 +115,7 @@ public class CourseRankingService {
                 log.debug("ZSet에 강의 추가 - CourseId: {}, Score: {:.2f}", course.getId(), score);
             }
             
-            // ZSet 크기 제한 (상위 20개만 유지)
+            // ZSet 크기 제한 (상위 40개만 유지, 수강취소 대비 버퍼존)
             trimZSet(rankingKey);
             
             log.debug("ZSet 데이터 부족으로 {}개 추가 - 기존: {}, 추가: {}, 총: {}", 
@@ -188,7 +189,11 @@ public class CourseRankingService {
             if (existingScore != null) {
                 // 이미 있으면 점수 업데이트
                 stringRedisTemplate.opsForZSet().add(zsetKey, courseKey, score);
-                log.debug("ZSet 업데이트 - Key: {}, Course: {}, Score: {:.2f}", zsetKey, courseKey, score);
+                log.debug("ZSet 업데이트 - Key: {}, Course: {}, Score: {:.2f} (이전: {:.2f})", 
+                        zsetKey, courseKey, score, existingScore);
+                
+                // 점수 감소 시에도 교체하지 않음 (성능 우선)
+                // 2페이지부터는 DB 조회하므로 정확성 보장됨
             } else {
                 // 없으면 상위 20개에 들 수 있는지 확인
                 Long zsetSize = stringRedisTemplate.opsForZSet().zCard(zsetKey);
@@ -225,6 +230,7 @@ public class CourseRankingService {
             log.warn("ZSet 업데이트 실패 - Key: {}, Course: {}, Error: {}", zsetKey, courseKey, e.getMessage());
         }
     }
+    
     
     /**
      * 강의를 랭킹에서 제거합니다 (강의 삭제 시 호출)
@@ -274,7 +280,7 @@ public class CourseRankingService {
         try {
             Long size = stringRedisTemplate.opsForZSet().zCard(rankingKey);
             if (size != null && size > ZSET_MAX_SIZE) {
-                // 하위 항목들 제거 (상위 20개만 유지)
+                // 하위 항목들 제거 (상위 40개만 유지)
                 stringRedisTemplate.opsForZSet().removeRange(rankingKey, 0, size - ZSET_MAX_SIZE - 1);
                 log.debug("ZSet 크기 제한 적용 - Key: {}, 제거된 항목: {}", rankingKey, size - ZSET_MAX_SIZE);
             }
