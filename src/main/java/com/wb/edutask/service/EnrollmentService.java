@@ -1,5 +1,6 @@
 package com.wb.edutask.service;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -91,37 +92,71 @@ public class EnrollmentService {
         log.info("✅ Lua 성공으로 DB 저장 진행 - StudentId: {}, NewCount: {}", 
                 enrollmentRequestDto.getStudentId(), newCount);
         
-        // 3. Lua 스크립트 성공 → DB에 저장
-        // Lua 스크립트가 성공했다는 것은 정원 확인이 완료되었다는 의미
-        Enrollment enrollment = new Enrollment(member, course);
-        enrollment.approve(); // Lua 스크립트에서 이미 정원 확인했으므로 자동 승인
+        // 3. Lua 스크립트 성공 → 즉시 응답 + 비동기 DB 처리
+        log.info("✅ Lua 성공! 비동기 DB 처리 시작 - StudentId: {}, CourseId: {}", 
+                enrollmentRequestDto.getStudentId(), enrollmentRequestDto.getCourseId());
+        
+        // 비동기로 DB 작업들 처리하되, Enrollment 저장은 동기로 처리 (ID 필요)
+        Enrollment enrollment = Enrollment.builder()
+                .student(member)
+                .course(course)
+                .status(EnrollmentStatus.APPROVED)
+                .appliedAt(LocalDateTime.now())
+                .build();
         
         Enrollment savedEnrollment = enrollmentRepository.save(enrollment);
+        log.debug("✅ Enrollment 저장 완료 - EnrollmentId: {}", savedEnrollment.getId());
         
-        // currentStudents 실시간 증가
-        try {
-            course.setCurrentStudents(course.getCurrentStudents() + 1);
-            courseRepository.save(course);
-            log.debug("currentStudents 실시간 증가 - CourseId: {}, 현재: {}", 
-                    course.getId(), course.getCurrentStudents());
-        } catch (Exception e) {
-            log.warn("currentStudents 업데이트 실패 - CourseId: {}, Error: {}", course.getId(), e.getMessage());
-        }
+        // currentStudents 업데이트와 ZSet 업데이트는 비동기로 처리
+        CompletableFuture<Void> asyncUpdates = processUpdatesAsync(course, newCount.intValue());
         
-        // ZSet 랭킹 업데이트
-        try {
-            courseRankingService.updateCourseRanking(course.getId(), course.getCurrentStudents(), course.getMaxStudents());
-            log.debug("ZSet 랭킹 업데이트 완료 - CourseId: {}", course.getId());
-        } catch (Exception e) {
-            log.warn("ZSet 랭킹 업데이트 실패 - CourseId: {}, Error: {}", course.getId(), e.getMessage());
-        }
-        
-        log.info("수강신청 완료 - StudentId: {}, CourseId: {}", 
+        log.info("🚀 수강신청 완료 - StudentId: {}, CourseId: {} (업데이트는 백그라운드 진행)", 
                 enrollmentRequestDto.getStudentId(), enrollmentRequestDto.getCourseId());
         
         return EnrollmentResponseDto.from(savedEnrollment, course);
     }
     
+    /**
+     * 비동기로 업데이트 작업들을 처리합니다 (currentStudents 업데이트 + ZSet 업데이트)
+     * 
+     * @param course 강의 정보  
+     * @param newCount Redis에서 업데이트된 새로운 수강인원 수
+     * @return CompletableFuture<Void>
+     */
+    @Async("enrollmentTaskExecutor")
+    public CompletableFuture<Void> processUpdatesAsync(Course course, Integer newCount) {
+        try {
+            log.debug("🔄 비동기 업데이트 시작 - CourseId: {}", course.getId());
+            
+            // 1. currentStudents 업데이트 (비동기)
+            try {
+                course.setCurrentStudents(newCount);
+                courseRepository.save(course);
+                log.debug("✅ currentStudents 업데이트 완료 - CourseId: {}, 현재: {}", 
+                        course.getId(), newCount);
+            } catch (Exception e) {
+                log.warn("❌ currentStudents 업데이트 실패 - CourseId: {}, Error: {}", 
+                        course.getId(), e.getMessage());
+            }
+            
+            // 2. ZSet 랭킹 업데이트 (비동기)
+            try {
+                courseRankingService.updateCourseRanking(course.getId(), newCount, course.getMaxStudents());
+                log.debug("✅ ZSet 랭킹 업데이트 완료 - CourseId: {}", course.getId());
+            } catch (Exception e) {
+                log.warn("❌ ZSet 랭킹 업데이트 실패 - CourseId: {}, Error: {}", 
+                        course.getId(), e.getMessage());
+            }
+            
+            log.info("🎉 비동기 업데이트 완료 - CourseId: {}", course.getId());
+            return CompletableFuture.completedFuture(null);
+            
+        } catch (Exception e) {
+            log.error("💥 비동기 업데이트 실패 - CourseId: {}, Error: {}", 
+                    course.getId(), e.getMessage(), e);
+            return CompletableFuture.failedFuture(e);
+        }
+    }
     
     /**
      * 비동기 수강신청 처리 (멀티서버 환경 대응)
