@@ -86,9 +86,8 @@ public class CourseService {
         Course course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new RuntimeException("강의를 찾을 수 없습니다: " + courseId));
 
-        // 실제 수강인원 계산 (APPLIED, APPROVED 상태)
-        int currentEnrollments = (int) enrollmentRepository.countActiveEnrollmentsByCourse(course.getId());
-        return CourseResponseDto.from(course, currentEnrollments);
+        // DB 컬럼 사용으로 N+1 문제 해결 (스케줄러로 동기화됨)
+        return CourseResponseDto.from(course, course.getCurrentStudents());
     }
     
     /**
@@ -101,9 +100,8 @@ public class CourseService {
     public Page<CourseResponseDto> getAllCourses(Pageable pageable) {
         Page<Course> courses = courseRepository.findAll(pageable);
         return courses.map(course -> {
-            // 실제 수강인원 계산 (APPLIED, APPROVED 상태)
-            int currentEnrollments = (int) enrollmentRepository.countActiveEnrollmentsByCourse(course.getId());
-            return CourseResponseDto.from(course, currentEnrollments);
+            // DB 컬럼 사용으로 N+1 문제 해결 (스케줄러로 동기화됨)
+            return CourseResponseDto.from(course, course.getCurrentStudents());
         });
     }
     
@@ -143,9 +141,8 @@ public class CourseService {
     public Page<CourseResponseDto> getAvailableCoursesForEnrollment(Pageable pageable) {
         Page<Course> courses = courseRepository.findAvailableCoursesForEnrollment(pageable);
         return courses.map(course -> {
-            // 실제 수강인원 계산 (APPLIED, APPROVED 상태)
-            int currentEnrollments = (int) enrollmentRepository.countActiveEnrollmentsByCourse(course.getId());
-            return CourseResponseDto.from(course, currentEnrollments);
+            // DB 컬럼 사용으로 N+1 문제 해결 (스케줄러로 동기화됨)
+            return CourseResponseDto.from(course, course.getCurrentStudents());
         });
     }
     
@@ -160,9 +157,8 @@ public class CourseService {
     public Page<CourseResponseDto> getAvailableCoursesForEnrollmentWithSort(String sortBy, Pageable pageable) {
         Page<Course> courses = courseRepository.findAvailableCoursesForEnrollmentWithSort(sortBy, pageable);
         return courses.map(course -> {
-            // 실제 수강인원 계산 (APPLIED, APPROVED 상태)
-            int currentEnrollments = (int) enrollmentRepository.countActiveEnrollmentsByCourse(course.getId());
-            return CourseResponseDto.from(course, currentEnrollments);
+            // DB 컬럼 사용으로 N+1 문제 해결 (스케줄러로 동기화됨)
+            return CourseResponseDto.from(course, course.getCurrentStudents());
         });
     }
     
@@ -233,8 +229,8 @@ public class CourseService {
         Course course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new RuntimeException("강의를 찾을 수 없습니다: " + courseId));
         
-        // 수강생이 있는 경우 삭제 불가 (실시간 DB 조회)
-        long activeEnrollments = enrollmentRepository.countActiveEnrollmentsByCourse(courseId);
+        // 수강생이 있는 경우 삭제 불가 (DB 컬럼 사용으로 N+1 문제 해결)
+        long activeEnrollments = course.getCurrentStudents();
         if (activeEnrollments > 0) {
             throw new RuntimeException("수강생이 있는 강의는 삭제할 수 없습니다");
         }

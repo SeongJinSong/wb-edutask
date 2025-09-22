@@ -1,5 +1,6 @@
 package com.wb.edutask.repository;
 
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -159,4 +160,13 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
      */
     @Query("SELECT COUNT(e) FROM Enrollment e WHERE e.course.id = :courseId AND e.status = 'APPROVED'")
     long countActiveEnrollmentsByCourse(@Param("courseId") Long courseId);
+    
+    /**
+     * 여러 강의의 활성 수강신청 수를 Batch로 조회합니다 (N+1 문제 해결)
+     * 
+     * @param courseIds 강의 ID 목록
+     * @return [courseId, count] 형태의 결과 목록
+     */
+    @Query("SELECT e.course.id, COUNT(e) FROM Enrollment e WHERE e.course.id IN :courseIds AND e.status = 'APPROVED' GROUP BY e.course.id")
+    List<Object[]> countActiveEnrollmentsByCourseBatch(@Param("courseIds") List<Long> courseIds);
 }

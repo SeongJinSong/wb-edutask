@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.wb.edutask.dto.CourseRequestDto;
 import com.wb.edutask.dto.CourseResponseDto;
 import com.wb.edutask.enums.CourseStatus;
+import com.wb.edutask.service.CourseRankingService;
 import com.wb.edutask.service.CourseService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -39,6 +40,7 @@ import lombok.RequiredArgsConstructor;
 public class CourseApiController {
 
     private final CourseService courseService;
+    private final CourseRankingService courseRankingService;
     
     
     /**
@@ -134,7 +136,7 @@ public class CourseApiController {
         // 정렬은 Repository 쿼리에서 처리하므로 Pageable의 정렬 정보는 무시
         Pageable unsortedPageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
         
-        Page<CourseResponseDto> courses = courseService.getAvailableCoursesForEnrollmentWithSort(sortBy, unsortedPageable);
+        Page<CourseResponseDto> courses = courseRankingService.getRankedCourses(sortBy, unsortedPageable);
         return ResponseEntity.ok(courses);
     }
     
