@@ -3,6 +3,7 @@ package com.wb.edutask.repository;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 import com.wb.edutask.entity.Member;
 import com.wb.edutask.enums.MemberType;
@@ -15,7 +16,7 @@ import com.wb.edutask.enums.MemberType;
  * @since 2025-09-20
  */
 @Repository
-public interface MemberRepository extends JpaRepository<Member, Long> {
+public interface MemberRepository extends JpaRepository<Member, Long>, JpaSpecificationExecutor<Member> {
     
     /**
      * 이메일로 회원을 조회합니다

@@ -1,11 +1,18 @@
 package com.wb.edutask.service;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import com.wb.edutask.dto.MemberRequestDto;
 import com.wb.edutask.dto.MemberResponseDto;
 import com.wb.edutask.entity.Member;
+import com.wb.edutask.enums.MemberType;
 import com.wb.edutask.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 
@@ -23,6 +30,68 @@ public class MemberService {
     
     private final MemberRepository memberRepository;
     
+    /**
+     * 모든 회원 목록을 페이징으로 조회합니다
+     * 
+     * @param pageable 페이징 정보
+     * @return 회원 목록 (페이징)
+     */
+    @Transactional(readOnly = true)
+    public Page<MemberResponseDto> getAllMembers(Pageable pageable) {
+        return memberRepository.findAll(pageable)
+                .map(this::convertToResponseDto);
+    }
+    
+    /**
+     * 모든 회원 목록을 조회합니다 (페이징 없음)
+     * 
+     * @return 회원 목록
+     */
+    @Transactional(readOnly = true)
+    public List<MemberResponseDto> getAllMembers() {
+        return memberRepository.findAll()
+                .stream()
+                .map(this::convertToResponseDto)
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * 회원을 검색합니다 (이름, 이메일, 회원 유형으로 검색)
+     * 
+     * @param search 검색어 (이름, 이메일)
+     * @param memberType 회원 유형
+     * @param pageable 페이징 정보
+     * @return 검색된 회원 목록 (페이징)
+     */
+    @Transactional(readOnly = true)
+    public Page<MemberResponseDto> searchMembers(String search, String memberType, Pageable pageable) {
+        Specification<Member> spec = Specification.where(null);
+        
+        // 검색어가 있으면 이름 또는 이메일로 검색
+        if (StringUtils.hasText(search)) {
+            spec = spec.and((root, query, criteriaBuilder) -> 
+                criteriaBuilder.or(
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("name")), "%" + search.toLowerCase() + "%"),
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("email")), "%" + search.toLowerCase() + "%")
+                )
+            );
+        }
+        
+        // 회원 유형 필터
+        if (StringUtils.hasText(memberType) && !memberType.equals("all")) {
+            try {
+                MemberType type = MemberType.valueOf(memberType.toUpperCase());
+                spec = spec.and((root, query, criteriaBuilder) -> 
+                    criteriaBuilder.equal(root.get("memberType"), type)
+                );
+            } catch (IllegalArgumentException e) {
+                // 잘못된 회원 유형은 무시
+            }
+        }
+        
+        return memberRepository.findAll(spec, pageable)
+                .map(this::convertToResponseDto);
+    }
     
     /**
      * 회원을 등록합니다

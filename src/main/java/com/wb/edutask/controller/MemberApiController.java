@@ -1,14 +1,18 @@
 package com.wb.edutask.controller;
 
 import java.util.Optional;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.wb.edutask.dto.MemberRequestDto;
 import com.wb.edutask.dto.MemberResponseDto;
@@ -32,6 +36,30 @@ public class MemberApiController {
     
     private final MemberService memberService;
     
+    /**
+     * 모든 회원 목록 조회 API (페이징 + 검색)
+     * 
+     * @param pageable 페이징 정보 (기본 20개씩)
+     * @param search 검색어 (이름, 이메일 검색)
+     * @param memberType 회원 유형 필터
+     * @return 회원 목록 (페이징)
+     */
+    @GetMapping
+    public ResponseEntity<?> getAllMembers(
+            @PageableDefault(size = 20) Pageable pageable,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String memberType) {
+        try {
+            if (StringUtils.hasText(search) || StringUtils.hasText(memberType)) {
+                return ResponseEntity.ok(memberService.searchMembers(search, memberType, pageable));
+            } else {
+                return ResponseEntity.ok(memberService.getAllMembers(pageable));
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ErrorResponse("서버 오류", "회원 목록 조회 중 오류가 발생했습니다."));
+        }
+    }
     
     /**
      * 회원 가입 API
