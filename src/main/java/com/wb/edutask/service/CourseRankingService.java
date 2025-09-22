@@ -6,10 +6,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
+
+import org.springframework.data.domain.*;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import com.wb.edutask.dto.CourseResponseDto;
@@ -78,9 +76,18 @@ public class CourseRankingService {
             .reverseRange(rankingKey, 0, pageable.getPageSize() - 1);
         
         if (courseKeys == null || courseKeys.isEmpty()) {
-            log.debug("ZSet에 랭킹 데이터가 없습니다 - Key: {}", rankingKey);
-            // ZSet이 비어있으면 DB로 Fallback
-            return courseService.getAvailableCoursesForEnrollmentWithSort(sortBy, pageable);
+            log.info("ZSet에 랭킹 데이터가 없습니다. 초기화를 시작합니다 - Key: {}", rankingKey);
+            // ZSet이 비어있으면 초기화 후 재조회
+            initializeZSetRanking(sortBy, rankingKey);
+            
+            // 초기화 후 다시 조회
+            courseKeys = stringRedisTemplate.opsForZSet()
+                .reverseRange(rankingKey, 0, pageable.getPageSize() - 1);
+            
+            if (courseKeys == null || courseKeys.isEmpty()) {
+                log.warn("ZSet 초기화 후에도 데이터가 없습니다. DB Fallback - Key: {}", rankingKey);
+                return courseService.getAvailableCoursesForEnrollmentWithSort(sortBy, pageable);
+            }
         }
         
         // "course:1" → 1L 변환
@@ -327,6 +334,65 @@ public class CourseRankingService {
                 return RANKING_RATE;
             default:
                 throw new IllegalArgumentException("지원하지 않는 정렬 기준: " + sortBy);
+        }
+    }
+    
+    /**
+     * ZSet이 비어있을 때 초기 랭킹 데이터를 설정합니다
+     * 
+     * @param sortBy 정렬 기준
+     * @param rankingKey ZSet 키
+     */
+    private void initializeZSetRanking(String sortBy, String rankingKey) {
+        try {
+            log.info("ZSet 초기화 시작 - Key: {}, SortBy: {}", rankingKey, sortBy);
+            
+            // DB에서 상위 40개 강의를 정렬 순서대로 가져오기 (버퍼존 포함)
+            Pageable topCoursesPageable = PageRequest.of(0, ZSET_MAX_SIZE, 
+                Sort.by(Sort.Direction.DESC, getSortField(sortBy)));
+            
+            Page<Course> topCourses = courseRepository.findAvailableCoursesForEnrollmentWithSort(
+                sortBy, topCoursesPageable);
+            
+            if (topCourses.isEmpty()) {
+                log.warn("초기화할 강의 데이터가 없습니다 - SortBy: {}", sortBy);
+                return;
+            }
+            
+            // ZSet에 강의들을 점수와 함께 추가
+            int addedCount = 0;
+            for (Course course : topCourses.getContent()) {
+                double score = calculateScore(sortBy, course);
+                String courseKey = "course:" + course.getId();
+                
+                stringRedisTemplate.opsForZSet().add(rankingKey, courseKey, score);
+                addedCount++;
+            }
+            
+            // TTL 설정
+            setZSetTTL(rankingKey);
+            
+            log.info("ZSet 초기화 완료 - Key: {}, 추가된 강의 수: {}", rankingKey, addedCount);
+            
+        } catch (Exception e) {
+            log.error("ZSet 초기화 실패 - Key: {}, Error: {}", rankingKey, e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * 정렬 기준에 따른 DB 정렬 필드를 반환합니다
+     * 
+     * @param sortBy 정렬 기준
+     * @return DB 정렬 필드명
+     */
+    private String getSortField(String sortBy) {
+        switch (sortBy) {
+            case "applicants":
+                return "currentStudents";
+            case "remaining":
+                return "currentStudents"; // 신청률도 currentStudents 기준으로 계산
+            default:
+                return "createdAt";
         }
     }
 }
