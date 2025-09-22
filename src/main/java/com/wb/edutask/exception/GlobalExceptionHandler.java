@@ -10,6 +10,7 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 
@@ -132,13 +133,20 @@ public class GlobalExceptionHandler {
     }
     
     /**
-     * 일반적인 예외 처리
+     * 일반적인 예외 처리 (액추에이터 경로 제외)
      * 
      * @param ex 예외
+     * @param request HTTP 요청
      * @return 에러 응답
      */
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<Map<String, Object>> handleGenericException(Exception ex) {
+    public ResponseEntity<Map<String, Object>> handleGenericException(Exception ex, HttpServletRequest request) {
+        // 액추에이터 경로는 제외 (Spring Boot가 자체 처리하도록)
+        String requestPath = request.getRequestURI();
+        if (requestPath.startsWith("/actuator")) {
+            throw new RuntimeException(ex); // 다시 던져서 Spring Boot가 처리하도록
+        }
+        
         Map<String, Object> response = new HashMap<>();
         response.put("error", "서버 오류");
         response.put("message", "요청 처리 중 오류가 발생했습니다");

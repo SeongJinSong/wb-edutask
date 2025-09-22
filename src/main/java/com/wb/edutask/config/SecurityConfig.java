@@ -29,14 +29,15 @@ public class SecurityConfig {
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            // H2 콘솔과 API를 위한 CSRF 비활성화
-            .csrf(csrf -> csrf.ignoringRequestMatchers("/h2-console/**", "/api/**"))
+            // H2 콘솔, API, 액추에이터를 위한 CSRF 비활성화
+            .csrf(csrf -> csrf.ignoringRequestMatchers("/h2-console/**", "/api/**", "/actuator/**"))
             // H2 콘솔 프레임 허용
             .headers(h -> h.frameOptions(f -> f.sameOrigin()))
             // 인증 설정
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/h2-console/**").permitAll()  // H2 콘솔 접근 허용
                 .requestMatchers("/api/**").permitAll()         // API 엔드포인트 허용
+                .requestMatchers("/actuator/**").permitAll()    // 액추에이터 엔드포인트 허용
                 .anyRequest().permitAll()                       // 모든 요청 허용 (개발용)
             );
         return http.build();

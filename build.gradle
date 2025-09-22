@@ -42,6 +42,9 @@ dependencies {
     // Spring Boot Security Starter (H2 콘솔 접근용)
     implementation 'org.springframework.boot:spring-boot-starter-security'
     
+    // Spring Boot Actuator (모니터링 및 관리 엔드포인트)
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    
     // Spring Data Redis + Jedis 클라이언트 (Netty 의존성 회피)
     implementation('org.springframework.boot:spring-boot-starter-data-redis') {
         exclude group: 'io.lettuce', module: 'lettuce-core'
