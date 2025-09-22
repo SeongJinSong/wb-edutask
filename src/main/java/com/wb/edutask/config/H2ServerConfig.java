@@ -3,7 +3,6 @@ package com.wb.edutask.config;
 import org.h2.tools.Server;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -16,7 +15,6 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 @Configuration
-@Profile({"dev", "local"}) // 개발 환경에서만 활성화
 public class H2ServerConfig {
 
     /**
