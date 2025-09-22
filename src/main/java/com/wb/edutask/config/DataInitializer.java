@@ -203,14 +203,12 @@ public class DataInitializer implements CommandLineRunner {
                 EnrollmentStatus status = EnrollmentStatus.APPROVED;
                 
                 LocalDateTime appliedAt = LocalDateTime.now().minusDays(random.nextInt(30));
-                LocalDateTime approvedAt = appliedAt.plusHours(random.nextInt(48));
                 
                 Enrollment enrollment = Enrollment.builder()
                     .student(student)
                     .course(course)
                     .status(status)
                     .appliedAt(appliedAt)
-                    .approvedAt(approvedAt)
                     .build();
                 
                 enrollments.add(enrollment);
@@ -220,7 +218,45 @@ public class DataInitializer implements CommandLineRunner {
         enrollmentRepository.saveAll(enrollments);
         log.info("수강신청 데이터 {}개가 생성되었습니다.", enrollments.size());
         
+        // 각 강의의 currentStudents 업데이트
+        updateCurrentStudentsCount();
+        
         // 통계 정보 출력 (모든 수강신청이 승인됨)
         log.info("수강신청 통계 - 총 승인: {}건", enrollments.size());
+    }
+    
+    /**
+     * 각 강의의 currentStudents 컬럼을 실제 수강신청 수로 업데이트합니다 (배치 최적화)
+     */
+    private void updateCurrentStudentsCount() {
+        log.info("강의별 currentStudents 배치 업데이트를 시작합니다...");
+        
+        // 단일 쿼리로 모든 강의의 수강인원 조회
+        List<Object[]> courseStats = courseRepository.findAllCourseWithEnrollmentCount();
+        
+        int updatedCount = 0;
+        
+        for (Object[] stat : courseStats) {
+            Long courseId = (Long) stat[0];
+            Long enrollmentCount = (Long) stat[1];
+            
+            try {
+                // 배치 업데이트 쿼리 사용
+                int updatedRows = courseRepository.updateCurrentStudents(courseId, enrollmentCount.intValue());
+                
+                if (updatedRows > 0) {
+                    updatedCount++;
+                    
+                    if (enrollmentCount > 0) {
+                        log.debug("강의 ID {} currentStudents 배치 업데이트: {}", courseId, enrollmentCount);
+                    }
+                }
+                
+            } catch (Exception e) {
+                log.warn("강의 ID {} currentStudents 업데이트 실패: {}", courseId, e.getMessage());
+            }
+        }
+        
+        log.info("강의별 currentStudents 배치 업데이트 완료: {}개 강의 처리됨", updatedCount);
     }
 }

@@ -1,6 +1,7 @@
 package com.wb.edutask.repository;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -144,4 +145,26 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
     @Modifying
     @Query("UPDATE Course c SET c.currentStudents = :currentStudents WHERE c.id = :courseId")
     int updateCurrentStudents(@Param("courseId") Long courseId, @Param("currentStudents") Integer currentStudents);
+    
+    /**
+     * 지정된 ID 목록으로 강의를 조회합니다 (ZSet 랭킹용)
+     * 
+     * @param courseIds 강의 ID 목록
+     * @return 강의 목록
+     */
+    @Query("SELECT c FROM Course c JOIN FETCH c.instructor WHERE c.id IN :courseIds")
+    List<Course> findByIdInOrderByField(@Param("courseIds") List<Long> courseIds);
+    
+    /**
+     * 모든 강의와 해당 강의의 승인된 수강신청 수를 한 번에 조회합니다 (초기화용)
+     * 
+     * @return [courseId, enrollmentCount] 배열 리스트
+     */
+    @Query("""
+        SELECT c.id, COALESCE(COUNT(e.id), 0)
+        FROM Course c 
+        LEFT JOIN Enrollment e ON e.course.id = c.id AND e.status = 'APPROVED'
+        GROUP BY c.id
+        """)
+    List<Object[]> findAllCourseWithEnrollmentCount();
 }

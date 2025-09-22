@@ -43,6 +43,7 @@ public class EnrollmentService {
     private final CourseRepository courseRepository;
     private final RedisConcurrencyService redisConcurrencyService;
     private final StringRedisTemplate stringRedisTemplate;
+    private final CourseRankingService courseRankingService;
     
     
     /**
@@ -97,6 +98,23 @@ public class EnrollmentService {
         
         Enrollment savedEnrollment = enrollmentRepository.save(enrollment);
         
+        // currentStudents 실시간 증가
+        try {
+            course.setCurrentStudents(course.getCurrentStudents() + 1);
+            courseRepository.save(course);
+            log.debug("currentStudents 실시간 증가 - CourseId: {}, 현재: {}", 
+                    course.getId(), course.getCurrentStudents());
+        } catch (Exception e) {
+            log.warn("currentStudents 업데이트 실패 - CourseId: {}, Error: {}", course.getId(), e.getMessage());
+        }
+        
+        // ZSet 랭킹 업데이트
+        try {
+            courseRankingService.updateCourseRanking(course.getId(), course.getCurrentStudents(), course.getMaxStudents());
+            log.debug("ZSet 랭킹 업데이트 완료 - CourseId: {}", course.getId());
+        } catch (Exception e) {
+            log.warn("ZSet 랭킹 업데이트 실패 - CourseId: {}, Error: {}", course.getId(), e.getMessage());
+        }
         
         log.info("수강신청 완료 - StudentId: {}, CourseId: {}", 
                 enrollmentRequestDto.getStudentId(), enrollmentRequestDto.getCourseId());
@@ -297,6 +315,25 @@ public class EnrollmentService {
         } catch (Exception e) {
             log.warn("Redis 처리 실패 - CourseId: {}, Error: {}", course.getId(), e.getMessage());
             // Redis 실패는 치명적이지 않으므로 계속 진행
+        }
+        
+        // currentStudents 실시간 감소
+        try {
+            int newCount = Math.max(0, course.getCurrentStudents() - 1);
+            course.setCurrentStudents(newCount);
+            courseRepository.save(course);
+            log.debug("currentStudents 실시간 감소 - CourseId: {}, 현재: {}", 
+                    course.getId(), newCount);
+        } catch (Exception e) {
+            log.warn("currentStudents 업데이트 실패 (취소) - CourseId: {}, Error: {}", course.getId(), e.getMessage());
+        }
+        
+        // ZSet 랭킹 업데이트
+        try {
+            courseRankingService.updateCourseRanking(course.getId(), course.getCurrentStudents(), course.getMaxStudents());
+            log.debug("ZSet 랭킹 업데이트 완료 (취소) - CourseId: {}", course.getId());
+        } catch (Exception e) {
+            log.warn("ZSet 랭킹 업데이트 실패 (취소) - CourseId: {}, Error: {}", course.getId(), e.getMessage());
         }
         
         log.info("수강신청이 취소되었습니다 - EnrollmentId: {}, StudentId: {}, CourseId: {}, Reason: {}", 

@@ -2,17 +2,21 @@ package com.wb.edutask.entity;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import com.wb.edutask.enums.CourseStatus;
 import jakarta.persistence.Column;
+import jakarta.persistence.ConstraintMode;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.ForeignKey;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
@@ -37,7 +41,14 @@ import lombok.ToString;
  * @since 2025-09-20
  */
 @Entity
-@Table(name = "courses")
+@Table(name = "courses", 
+       indexes = {
+           @Index(name = "idx_course_status_created_at", 
+                  columnList = "status, created_at"),
+           @Index(name = "idx_course_status_current_students", 
+                  columnList = "status, current_students")
+       })
+@BatchSize(size = 20) // N+1 문제 해결: 20개씩 배치로 조회
 @Getter
 @Setter
 @Builder
@@ -73,7 +84,7 @@ public class Course {
      * 강사 정보 (Member와 다대일 관계)
      */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "instructor_id", nullable = false)
+    @JoinColumn(name = "instructor_id", nullable = false, foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT))
     @NotNull(message = "강사 정보는 필수입니다")
     private Member instructor;
     
@@ -148,6 +159,7 @@ public class Course {
         this.startDate = startDate;
         this.endDate = endDate;
         this.status = CourseStatus.SCHEDULED;
+        this.currentStudents = 0;
     }
     
     /**
