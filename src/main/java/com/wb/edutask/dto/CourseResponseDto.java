@@ -45,6 +45,11 @@ public class CourseResponseDto {
      */
     private Integer maxStudents;
     
+    /**
+     * 현재 수강인원
+     */
+    private Integer currentEnrollments;
+    
     
     /**
      * 강의 시작일
@@ -94,6 +99,7 @@ public class CourseResponseDto {
         dto.description = course.getDescription();
         dto.instructor = InstructorInfo.from(course.getInstructor());
         dto.maxStudents = course.getMaxStudents();
+        dto.currentEnrollments = 0; // 기본값, 서비스에서 별도 설정
         dto.startDate = course.getStartDate();
         dto.endDate = course.getEndDate();
         dto.status = course.getStatus();
@@ -101,6 +107,19 @@ public class CourseResponseDto {
         dto.canEnroll = course.canEnroll();
         dto.createdAt = course.getCreatedAt();
         dto.updatedAt = course.getUpdatedAt();
+        return dto;
+    }
+    
+    /**
+     * Course 엔티티와 현재 수강인원으로부터 CourseResponseDto를 생성합니다
+     * 
+     * @param course Course 엔티티
+     * @param currentEnrollments 현재 수강인원
+     * @return CourseResponseDto
+     */
+    public static CourseResponseDto from(Course course, Integer currentEnrollments) {
+        CourseResponseDto dto = from(course);
+        dto.currentEnrollments = currentEnrollments;
         return dto;
     }
     
