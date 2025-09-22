@@ -589,6 +589,21 @@ netstat -an | grep 9092
 
 - **WB Development Team** - *초기 개발* - [WB Team](https://github.com/wb-team)
 
+## 📚 문서 가이드
+
+### 🎯 주요 문서
+- **[📋 API 컨트롤러 문서](./docs/controllers/README.md)** - 전체 API 개요 및 고급 기능
+- **[🌍 환경 설정 가이드](./docs/environment-setup.md)** - 로컬/개발/테스트/운영 환경 설정
+
+### 📖 API 상세 문서
+- **[👤 회원 관리 API](./docs/controllers/member-controller.md)** - 회원가입, 검색, 필터링, 페이징
+- **[📚 강의 관리 API](./docs/controllers/course-controller.md)** - Redis ZSet 랭킹, 하이브리드 페이징
+- **[🎓 수강신청 API](./docs/controllers/enrollment-controller.md)** - Lua Script 동시성 제어, 실시간 통계
+
+### 🛠️ 개발 도구
+- **[🧪 테스트 스크립트](./test-member-api.sh)** - 자동화된 API 테스트
+- **각 API 문서의 cURL 예시** - 즉시 실행 가능한 테스트 명령어
+
 ## 📞 문의
 
 프로젝트에 대한 문의사항이 있으시면 이슈를 생성해 주세요.

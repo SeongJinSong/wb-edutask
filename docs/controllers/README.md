@@ -135,8 +135,8 @@ Accept: application/json
 ./gradlew test
 ```
 
-### 3. Postman 컬렉션
-`docs/api/postman-collection.json` 파일을 Postman에 import하여 사용할 수 있습니다.
+### 3. cURL 명령어 활용
+각 API 문서에 포함된 cURL 예시를 복사하여 즉시 테스트할 수 있습니다.
 
 ### 4. 웹 UI 테스트
 - **강의 목록**: http://localhost:8080/
@@ -170,8 +170,8 @@ Accept: application/json
 3. 리포지토리 인터페이스 (`@Repository`)
 4. DTO 클래스 생성 (Request/Response)
 5. 테스트 코드 작성 (`@SpringBootTest`)
-6. API 문서 업데이트
-7. Postman 컬렉션 업데이트
+6. API 문서 업데이트 (cURL 예시 포함)
+7. 테스트 스크립트 작성
 
 ### 문서 업데이트 규칙
 - API 변경 시 해당 컨트롤러 문서 즉시 업데이트
@@ -188,9 +188,8 @@ Accept: application/json
 ## 🔗 관련 링크
 
 - [메인 프로젝트 README](../../README.md)
-- [API 테스트 스크립트](../api/test-scripts/)
-- [Postman 컬렉션](../api/postman-collection.json)
 - [환경 설정 가이드](../environment-setup.md)
+- [테스트 스크립트](../../test-member-api.sh)
 
 ## 🎯 기술적 우수성
 
