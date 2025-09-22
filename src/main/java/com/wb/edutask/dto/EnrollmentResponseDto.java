@@ -55,17 +55,12 @@ public class EnrollmentResponseDto {
     private LocalDateTime appliedAt;
     
     /**
-     * 승인 일시
-     */
-    private LocalDateTime approvedAt;
-    
-    /**
-     * 취소/거절 일시
+     * 취소 일시
      */
     private LocalDateTime cancelledAt;
     
     /**
-     * 취소/거절 사유
+     * 취소 사유
      */
     private String reason;
     
@@ -88,7 +83,6 @@ public class EnrollmentResponseDto {
         dto.status = enrollment.getStatus();
         dto.statusDescription = enrollment.getStatus().getDescription();
         dto.appliedAt = enrollment.getAppliedAt();
-        dto.approvedAt = enrollment.getApprovedAt();
         dto.cancelledAt = enrollment.getCancelledAt();
         dto.reason = enrollment.getReason();
         dto.updatedAt = enrollment.getUpdatedAt();
@@ -110,7 +104,6 @@ public class EnrollmentResponseDto {
         dto.status = enrollment.getStatus();
         dto.statusDescription = enrollment.getStatus().getDescription();
         dto.appliedAt = enrollment.getAppliedAt();
-        dto.approvedAt = enrollment.getApprovedAt();
         dto.cancelledAt = enrollment.getCancelledAt();
         dto.reason = enrollment.getReason();
         dto.updatedAt = enrollment.getUpdatedAt();

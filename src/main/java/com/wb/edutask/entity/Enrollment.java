@@ -5,13 +5,16 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import com.wb.edutask.enums.EnrollmentStatus;
 import jakarta.persistence.Column;
+import jakarta.persistence.ConstraintMode;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.ForeignKey;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
@@ -34,7 +37,11 @@ import lombok.ToString;
  */
 @Entity
 @Table(name = "enrollments", 
-       uniqueConstraints = @UniqueConstraint(columnNames = {"student_id", "course_id"}))
+       uniqueConstraints = @UniqueConstraint(columnNames = {"student_id", "course_id"}),
+       indexes = {
+           @Index(name = "idx_enrollment_course_status", 
+                  columnList = "course_id, status")
+       })
 @Getter
 @Setter
 @Builder
@@ -54,7 +61,7 @@ public class Enrollment {
      * 수강신청한 학생 (Member와 다대일 관계)
      */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "student_id", nullable = false)
+    @JoinColumn(name = "student_id", nullable = false, foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT))
     @NotNull(message = "학생 정보는 필수입니다")
     private Member student;
     
@@ -62,7 +69,7 @@ public class Enrollment {
      * 신청한 강의 (Course와 다대일 관계)
      */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "course_id", nullable = false)
+    @JoinColumn(name = "course_id", nullable = false, foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT))
     @NotNull(message = "강의 정보는 필수입니다")
     private Course course;
     
@@ -89,19 +96,13 @@ public class Enrollment {
     private LocalDateTime updatedAt;
     
     /**
-     * 승인 일시
-     */
-    @Column
-    private LocalDateTime approvedAt;
-    
-    /**
-     * 취소/거절 일시
+     * 취소 일시
      */
     @Column
     private LocalDateTime cancelledAt;
     
     /**
-     * 취소/거절 사유
+     * 취소 사유
      */
     @Column(length = 500)
     private String reason;
@@ -119,11 +120,10 @@ public class Enrollment {
     }
     
     /**
-     * 수강신청을 승인합니다
+     * 수강신청을 승인합니다 (온라인 강의는 즉시 승인)
      */
     public void approve() {
         this.status = EnrollmentStatus.APPROVED;
-        this.approvedAt = LocalDateTime.now();
         this.reason = null;
     }
     
@@ -139,23 +139,12 @@ public class Enrollment {
     }
     
     /**
-     * 수강신청을 거절합니다
-     * 
-     * @param reason 거절 사유
-     */
-    public void reject(String reason) {
-        this.status = EnrollmentStatus.REJECTED;
-        this.cancelledAt = LocalDateTime.now();
-        this.reason = reason;
-    }
-    
-    /**
-     * 수강신청이 활성 상태인지 확인합니다 (신청 또는 승인 상태)
+     * 수강신청이 활성 상태인지 확인합니다 (승인 상태)
      * 
      * @return 활성 상태 여부
      */
     public boolean isActive() {
-        return status == EnrollmentStatus.APPLIED || status == EnrollmentStatus.APPROVED;
+        return status == EnrollmentStatus.APPROVED;
     }
     
     /**
