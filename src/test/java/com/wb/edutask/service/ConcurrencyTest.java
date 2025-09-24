@@ -86,6 +86,7 @@ class ConcurrencyTest {
             "선착순 5명만 수강 가능한 인기 강의", 
             instructor, 
             5, // 정원 5명
+            100000,
             LocalDate.now().plusDays(7), 
             LocalDate.now().plusDays(30)
         );

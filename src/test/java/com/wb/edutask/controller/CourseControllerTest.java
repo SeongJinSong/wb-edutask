@@ -94,6 +94,7 @@ class CourseControllerTest {
             "Java 기초부터 심화까지",
             instructor.getId(),
             20,
+            150000,
             LocalDate.now().plusDays(7),
             LocalDate.now().plusDays(30)
         );
@@ -121,6 +122,7 @@ class CourseControllerTest {
             "Python 기초 강의",
             student.getId(), // 수강생 ID 사용
             15,
+            120000,
             LocalDate.now().plusDays(7),
             LocalDate.now().plusDays(30)
         );
@@ -143,6 +145,7 @@ class CourseControllerTest {
             "JavaScript 기초 강의",
             999L, // 존재하지 않는 ID
             15,
+            180000,
             LocalDate.now().plusDays(7),
             LocalDate.now().plusDays(30)
         );
@@ -165,6 +168,7 @@ class CourseControllerTest {
             "설명",
             instructor.getId(),
             15,
+            100000,
             LocalDate.now().plusDays(7),
             LocalDate.now().plusDays(30)
         );
@@ -186,6 +190,7 @@ class CourseControllerTest {
             "Vue.js 기초부터 실무까지",
             instructor,
             25,
+            200000,
             LocalDate.now().plusDays(10),
             LocalDate.now().plusDays(40)
         );
@@ -220,6 +225,7 @@ class CourseControllerTest {
             "React 기초 강의",
             instructor,
             20,
+            150000,
             LocalDate.now().plusDays(5),
             LocalDate.now().plusDays(25)
         );
@@ -228,6 +234,7 @@ class CourseControllerTest {
             "Angular 기초 강의",
             instructor,
             15,
+            180000,
             LocalDate.now().plusDays(10),
             LocalDate.now().plusDays(35)
         );
@@ -253,6 +260,7 @@ class CourseControllerTest {
             "Node.js 기초 강의",
             instructor,
             20,
+            120000,
             LocalDate.now().plusDays(7),
             LocalDate.now().plusDays(30)
         );

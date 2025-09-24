@@ -62,6 +62,7 @@ public class CourseService {
                 courseRequestDto.getDescription(),
                 instructor,
                 courseRequestDto.getMaxStudents(),
+                courseRequestDto.getPrice(),
                 courseRequestDto.getStartDate(),
                 courseRequestDto.getEndDate()
         );
@@ -208,6 +209,7 @@ public class CourseService {
         existingCourse.setDescription(courseRequestDto.getDescription());
         existingCourse.setInstructor(instructor);
         existingCourse.setMaxStudents(courseRequestDto.getMaxStudents());
+        existingCourse.setPrice(courseRequestDto.getPrice());
         existingCourse.setStartDate(courseRequestDto.getStartDate());
         existingCourse.setEndDate(courseRequestDto.getEndDate());
         

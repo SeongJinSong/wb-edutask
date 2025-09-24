@@ -149,11 +149,15 @@ public class DataInitializer implements CommandLineRunner {
             // 정원을 랜덤하게 설정 (5~20명)
             int maxStudents = 5 + random.nextInt(16);
             
+            // 가격 랜덤 생성 (50,000원 ~ 300,000원)
+            int price = 50000 + random.nextInt(251) * 1000;
+            
             courses.add(Course.builder()
                 .courseName(String.format("%s %s (%s)", template[0], level, instructor.getName()))
                 .description(template[1])
                 .instructor(instructor)
                 .maxStudents(maxStudents)
+                .price(price)
                 .startDate(startDate)
                 .endDate(endDate)
                 .status(CourseStatus.SCHEDULED)

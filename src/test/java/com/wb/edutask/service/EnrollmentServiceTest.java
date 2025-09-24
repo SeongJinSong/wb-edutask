@@ -103,6 +103,7 @@ class EnrollmentServiceTest {
                 .description("Java 기초부터 심화까지")
                 .instructor(instructor)
                 .maxStudents(10)
+                .price(100000)
                 .startDate(LocalDate.now().plusDays(7))
                 .endDate(LocalDate.now().plusDays(37))
                 .build();
@@ -185,6 +186,8 @@ class EnrollmentServiceTest {
                 .description("Python 기초부터 심화까지")
                 .instructor(otherInstructor)
                 .maxStudents(15)
+                .price(100000)
+                .price(150000)
                 .startDate(LocalDate.now().plusDays(10))
                 .endDate(LocalDate.now().plusDays(40))
                 .build();
@@ -366,6 +369,7 @@ class EnrollmentServiceTest {
                 .description("Python 기초부터 심화까지")
                 .instructor(instructor)
                 .maxStudents(20)
+                .price(100000)
                 .startDate(LocalDate.now().plusDays(15))
                 .endDate(LocalDate.now().plusDays(45))
                 .build();
@@ -376,6 +380,7 @@ class EnrollmentServiceTest {
                 .description("JavaScript 기초부터 심화까지")
                 .instructor(instructor)
                 .maxStudents(15)
+                .price(100000)
                 .startDate(LocalDate.now().plusDays(20))
                 .endDate(LocalDate.now().plusDays(50))
                 .build();
@@ -407,6 +412,7 @@ class EnrollmentServiceTest {
                 .description("정원이 가득 찬 강의")
                 .instructor(instructor)
                 .maxStudents(1) // 정원 1명
+                .price(100000)
                 .startDate(LocalDate.now().plusDays(10))
                 .endDate(LocalDate.now().plusDays(40))
                 .build();
@@ -430,6 +436,7 @@ class EnrollmentServiceTest {
                 .description("수강 가능한 강의")
                 .instructor(instructor)
                 .maxStudents(20)
+                .price(100000)
                 .startDate(LocalDate.now().plusDays(15))
                 .endDate(LocalDate.now().plusDays(45))
                 .build();
@@ -467,6 +474,7 @@ class EnrollmentServiceTest {
                 .description("종료된 강의")
                 .instructor(instructor)
                 .maxStudents(20)
+                .price(100000)
                 .startDate(LocalDate.now().minusDays(30))
                 .endDate(LocalDate.now().minusDays(1))
                 .build();
@@ -479,6 +487,7 @@ class EnrollmentServiceTest {
                 .description("정원이 가득 찬 강의")
                 .instructor(instructor)
                 .maxStudents(1) // 정원 1명
+                .price(100000)
                 .startDate(LocalDate.now().plusDays(10))
                 .endDate(LocalDate.now().plusDays(40))
                 .build();

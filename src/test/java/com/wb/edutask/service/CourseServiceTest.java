@@ -83,6 +83,7 @@ class CourseServiceTest {
             "Java 기초부터 심화까지",
             instructor.getId(),
             20,
+            150000,
             LocalDate.now().plusDays(7),
             LocalDate.now().plusDays(30)
         );
@@ -109,6 +110,7 @@ class CourseServiceTest {
             "Python 기초 강의",
             student.getId(), // 수강생 ID 사용
             15,
+            120000,
             LocalDate.now().plusDays(7),
             LocalDate.now().plusDays(30)
         );
@@ -128,6 +130,7 @@ class CourseServiceTest {
             "JavaScript 기초 강의",
             999L, // 존재하지 않는 ID
             15,
+            180000,
             LocalDate.now().plusDays(7),
             LocalDate.now().plusDays(30)
         );
@@ -148,6 +151,7 @@ class CourseServiceTest {
             "React 기초 강의",
             instructor.getId(),
             20,
+            200000,
             LocalDate.now().plusDays(7),
             LocalDate.now().plusDays(30)
         );
@@ -159,6 +163,7 @@ class CourseServiceTest {
             "React 심화 강의",
             instructor.getId(),
             15,
+            250000,
             LocalDate.now().plusDays(14),
             LocalDate.now().plusDays(45)
         );
@@ -178,6 +183,7 @@ class CourseServiceTest {
             "Vue.js 기초부터 실무까지",
             instructor,
             25,
+            200000,
             LocalDate.now().plusDays(10),
             LocalDate.now().plusDays(40)
         );

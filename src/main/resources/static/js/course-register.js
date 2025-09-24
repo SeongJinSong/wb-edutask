@@ -253,6 +253,7 @@ async function handleCourseSubmit(event) {
         description: formData.get('description').trim(),
         instructorId: parseInt(formData.get('instructorId')),
         maxStudents: parseInt(formData.get('maxStudents')),
+        price: parseInt(formData.get('price')) || 0, // 가격 필드 추가 (빈 값이면 0으로 설정)
         startDate: formData.get('startDate'),
         endDate: formData.get('endDate')
     };
@@ -354,6 +355,14 @@ function validateField(input) {
             const maxStudents = parseInt(value);
             if (value && (maxStudents < 1 || maxStudents > 100)) {
                 showFieldError(input, '수강 인원은 1명 이상 100명 이하로 입력해주세요.');
+                return false;
+            }
+            break;
+            
+        case 'price':
+            const price = parseInt(value);
+            if (value && (price < 0 || price > 10000000)) {
+                showFieldError(input, '가격은 0원 이상 1,000만원 이하로 입력해주세요.');
                 return false;
             }
             break;

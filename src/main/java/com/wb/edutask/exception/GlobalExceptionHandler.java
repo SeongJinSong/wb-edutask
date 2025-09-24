@@ -1,5 +1,6 @@
 package com.wb.edutask.exception;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -13,14 +14,17 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * 전역 예외 처리를 위한 핸들러
+ * 표준화된 에러 응답과 로깅을 제공합니다
  * 
  * @author WB Development Team
  * @version 1.0.0
  * @since 2025-09-20
  */
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
     
@@ -28,22 +32,29 @@ public class GlobalExceptionHandler {
      * 유효성 검증 실패 예외 처리
      * 
      * @param ex 유효성 검증 예외
+     * @param request HTTP 요청
      * @return 에러 응답
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, Object>> handleValidationExceptions(MethodArgumentNotValidException ex) {
-        Map<String, Object> response = new HashMap<>();
-        Map<String, String> errors = new HashMap<>();
+    public ResponseEntity<Map<String, Object>> handleValidationExceptions(
+            MethodArgumentNotValidException ex, HttpServletRequest request) {
         
+        Map<String, String> fieldErrors = new HashMap<>();
         ex.getBindingResult().getAllErrors().forEach((error) -> {
             String fieldName = ((FieldError) error).getField();
             String errorMessage = error.getDefaultMessage();
-            errors.put(fieldName, errorMessage);
+            fieldErrors.put(fieldName, errorMessage);
         });
         
-        response.put("error", "유효성 검증 실패");
-        response.put("message", "입력값을 확인해주세요");
-        response.put("details", errors);
+        log.warn("유효성 검증 실패 - Path: {}, Errors: {}", request.getRequestURI(), fieldErrors);
+        
+        Map<String, Object> response = createErrorResponse(
+            "VALIDATION_FAILED",
+            "유효성 검증 실패",
+            "입력값을 확인해주세요",
+            request.getRequestURI(),
+            fieldErrors
+        );
         
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
@@ -147,10 +158,42 @@ public class GlobalExceptionHandler {
             throw new RuntimeException(ex); // 다시 던져서 Spring Boot가 처리하도록
         }
         
-        Map<String, Object> response = new HashMap<>();
-        response.put("error", "서버 오류");
-        response.put("message", "요청 처리 중 오류가 발생했습니다");
+        log.error("예상치 못한 서버 오류 - Path: {}, Error: {}", requestPath, ex.getMessage(), ex);
+        
+        Map<String, Object> response = createErrorResponse(
+            "INTERNAL_SERVER_ERROR",
+            "서버 오류",
+            "요청 처리 중 오류가 발생했습니다",
+            requestPath,
+            null
+        );
         
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+    }
+    
+    /**
+     * 표준화된 에러 응답을 생성합니다
+     * 
+     * @param errorCode 에러 코드
+     * @param error 에러 제목
+     * @param message 에러 메시지
+     * @param path 요청 경로
+     * @param details 상세 정보
+     * @return 표준화된 에러 응답
+     */
+    private Map<String, Object> createErrorResponse(String errorCode, String error, String message, 
+                                                   String path, Object details) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("timestamp", LocalDateTime.now());
+        response.put("errorCode", errorCode);
+        response.put("error", error);
+        response.put("message", message);
+        response.put("path", path);
+        
+        if (details != null) {
+            response.put("details", details);
+        }
+        
+        return response;
     }
 }

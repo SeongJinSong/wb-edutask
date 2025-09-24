@@ -120,6 +120,7 @@ class EnrollmentControllerTest {
                 .description("Java 기초부터 심화까지")
                 .instructor(instructor)
                 .maxStudents(10)
+                .price(150000)
                 .startDate(LocalDate.now().plusDays(7))
                 .endDate(LocalDate.now().plusDays(37))
                 .build();
@@ -163,6 +164,7 @@ class EnrollmentControllerTest {
                 .description("Python 기초부터 심화까지")
                 .instructor(otherInstructor)
                 .maxStudents(15)
+                .price(180000)
                 .startDate(LocalDate.now().plusDays(10))
                 .endDate(LocalDate.now().plusDays(40))
                 .build();
@@ -353,6 +355,7 @@ class EnrollmentControllerTest {
             "정원이 가득 찬 강의", 
             instructor, 
             1, // 정원 1명
+            50000,
             LocalDate.now().plusDays(10), 
             LocalDate.now().plusDays(40)
         );
@@ -418,7 +421,8 @@ class EnrollmentControllerTest {
             "Python 프로그래밍", 
             "Python 기초부터 심화까지", 
             instructor, 
-            20, 
+            20,
+            180000, 
             LocalDate.now().plusDays(15), 
             LocalDate.now().plusDays(45)
         );

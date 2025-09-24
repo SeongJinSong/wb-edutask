@@ -55,6 +55,13 @@ public class CourseRequestDto {
     private Integer maxStudents;
     
     /**
+     * 강의 가격 (원 단위, 필수)
+     */
+    @NotNull(message = "가격은 필수입니다")
+    @Min(value = 0, message = "가격은 0원 이상이어야 합니다")
+    private Integer price;
+    
+    /**
      * 강의 시작일 (필수)
      */
     @NotNull(message = "강의 시작일은 필수입니다")

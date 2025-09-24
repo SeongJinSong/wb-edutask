@@ -46,6 +46,11 @@ public class CourseResponseDto {
     private Integer maxStudents;
     
     /**
+     * 강의 가격 (원 단위)
+     */
+    private Integer price;
+    
+    /**
      * 현재 수강인원
      */
     private Integer currentEnrollments;
@@ -99,6 +104,7 @@ public class CourseResponseDto {
         dto.description = course.getDescription();
         dto.instructor = InstructorInfo.from(course.getInstructor());
         dto.maxStudents = course.getMaxStudents();
+        dto.price = course.getPrice();
         dto.currentEnrollments = 0; // 기본값, 서비스에서 별도 설정
         dto.startDate = course.getStartDate();
         dto.endDate = course.getEndDate();

@@ -1,6 +1,7 @@
 package com.wb.edutask.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -77,6 +78,9 @@ class AsyncEnrollmentTest {
                 .description("비동기 처리 테스트용 강의")
                 .instructor(instructor)
                 .maxStudents(5)
+                .price(100000)
+                .startDate(LocalDate.now().plusDays(7))
+                .endDate(LocalDate.now().plusDays(30))
                 .build();
         courseRepository.save(limitedCourse);
         

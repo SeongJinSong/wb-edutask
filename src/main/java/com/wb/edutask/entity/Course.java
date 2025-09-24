@@ -104,6 +104,14 @@ public class Course {
     @Max(value = 100, message = "수강 정원은 최대 100명 이하여야 합니다")
     private Integer maxStudents;
     
+    /**
+     * 강의 가격 (원 단위)
+     */
+    @Column(nullable = false)
+    @NotNull(message = "가격은 필수입니다")
+    @Min(value = 0, message = "가격은 0원 이상이어야 합니다")
+    private Integer price;
+    
     
     /**
      * 강의 시작일
@@ -147,15 +155,17 @@ public class Course {
      * @param description 강의 설명
      * @param instructor 강사
      * @param maxStudents 수강 정원
+     * @param price 강의 가격
      * @param startDate 시작일
      * @param endDate 종료일
      */
     public Course(String courseName, String description, Member instructor, 
-                  Integer maxStudents, LocalDate startDate, LocalDate endDate) {
+                  Integer maxStudents, Integer price, LocalDate startDate, LocalDate endDate) {
         this.courseName = courseName;
         this.description = description;
         this.instructor = instructor;
         this.maxStudents = maxStudents;
+        this.price = price;
         this.startDate = startDate;
         this.endDate = endDate;
         this.status = CourseStatus.SCHEDULED;

@@ -149,6 +149,7 @@ docker exec wb-edutask-redis redis-cli ping   # PONG 출력되면 정상
 - **👥 회원 관리**: http://localhost:8080/members
 - **📚 강의 등록**: http://localhost:8080/course-register
 - **📋 신청 현황**: http://localhost:8080/enrollment
+- **📖 API 문서**: http://localhost:8080/swagger-ui/index.html
 - **🗄️ H2 콘솔**: http://localhost:8080/h2-console
   - JDBC URL: `jdbc:h2:tcp://localhost:9092/mem:testdb`
   - Username: `sa`
@@ -224,9 +225,9 @@ Content-Type: application/json
   "description": "실무 중심의 Spring Boot 강의",
   "instructorId": 1,
   "maxStudents": 30,
+  "price": 150000,
   "startDate": "2024-01-15",
-  "endDate": "2024-03-15",
-  "price": 150000
+  "endDate": "2024-03-15"
 }
 ```
 
