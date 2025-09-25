@@ -38,83 +38,6 @@ WB Education Task Management System은 교육 업무를 효율적으로 관리�
 - **JUnit 5**: 단위 테스트
 - **Jakarta EE**: 10
 
-## 🏗️ 시스템 아키텍처
-
-### 📊 하이브리드 랭킹 시스템
-```
-🎯 ZSet 기반 실시간 랭킹 (1-40위)
-├── 🥇 1페이지 (1-20위): Redis ZSet - 초고속 응답
-├── 🛡️ 버퍼존 (21-40위): 수강취소 대비 안정성 확보
-└── 📚 2페이지+ (41위~): DB 조회 - 정확한 데이터
-
-🔄 비동기 처리 아키텍처
-├── Redis Lua Script: 동시성 제어 (동기)
-├── 즉시 응답: 클라이언트 대기시간 최소화
-├── 비동기 DB 처리: Enrollment 저장 + currentStudents 업데이트
-├── Distributed Lock: 스케줄러 중복 실행 방지
-└── TTL 기반 캐시: 2분 자동 만료 (개발용)
-```
-
-### 🔧 핵심 컴포넌트
-- **CourseRankingService**: ZSet 기반 랭킹 관리
-- **RedisConcurrencyService**: Redis 동시성 제어
-- **CourseStatsScheduler**: DB-Redis 동기화 스케줄러
-- **DataInitializer**: 초기 데이터 자동 생성
-
-## 📁 프로젝트 구조
-
-```
-wb-edutask/
-├── src/
-│   ├── main/
-│   │   ├── java/com/wb/edutask/
-│   │   │   ├── WbEdutaskApplication.java          # 메인 애플리케이션
-│   │   │   ├── config/
-│   │   │   │   ├── AsyncConfig.java               # 비동기 처리 설정
-│   │   │   │   ├── H2ServerConfig.java            # H2 TCP 서버 설정
-│   │   │   │   ├── RedisConfig.java               # Redis 설정
-│   │   │   │   └── SecurityConfig.java            # Spring Security 설정
-│   │   │   ├── controller/
-│   │   │   │   ├── CourseApiController.java       # 강의 관리 API
-│   │   │   │   ├── EnrollmentApiController.java   # 수강신청 API
-│   │   │   │   ├── MemberApiController.java       # 회원 관리 API
-│   │   │   │   ├── SimpleController.java          # 헬스체크 API
-│   │   │   │   └── ViewController.java            # 뷰 컨트롤러
-│   │   │   ├── service/
-│   │   │   │   ├── CourseService.java             # 강의 비즈니스 로직
-│   │   │   │   ├── CourseRankingService.java      # ZSet 랭킹 관리
-│   │   │   │   ├── CourseStatsScheduler.java      # DB-Redis 동기화
-│   │   │   │   ├── EnrollmentService.java         # 수강신청 로직
-│   │   │   │   ├── MemberService.java             # 회원 관리 로직
-│   │   │   │   └── RedisConcurrencyService.java   # Redis 동시성 제어
-│   │   │   ├── repository/
-│   │   │   │   ├── CourseRepository.java          # 강의 데이터 접근
-│   │   │   │   ├── EnrollmentRepository.java      # 수강신청 데이터 접근
-│   │   │   │   └── MemberRepository.java          # 회원 데이터 접근
-│   │   │   ├── entity/
-│   │   │   │   ├── Course.java                    # 강의 엔티티
-│   │   │   │   ├── Enrollment.java                # 수강신청 엔티티
-│   │   │   │   └── Member.java                    # 회원 엔티티
-│   │   │   ├── dto/                               # 데이터 전송 객체
-│   │   │   ├── enums/                             # 열거형 상수
-│   │   │   └── exception/
-│   │   │       └── GlobalExceptionHandler.java    # 전역 예외 처리
-│   │   └── resources/
-│   │       ├── application.yml                    # 애플리케이션 설정
-│   │       └── static/                            # 정적 리소스
-│   │           ├── index.html                     # 강의 목록 페이지
-│   │           ├── members.html                   # 회원 관리 페이지
-│   │           ├── signup.html                    # 회원가입 페이지
-│   │           ├── course-register.html           # 강의등록 페이지
-│   │           ├── enrollment.html                # 신청현황 페이지
-│   │           ├── css/style.css                  # 통합 스타일시트
-│   │           └── js/                            # JavaScript 파일들
-│   └── test/                                      # 테스트 코드
-├── docs/                                          # API 문서
-├── docker-compose.yml                             # Redis 컨테이너 설정
-└── test-member-api.sh                             # API 테스트 스크립트
-```
-
 ## 🛠️ 설치 및 실행
 
 ### 1. 사전 요구사항
@@ -149,11 +72,94 @@ docker exec wb-edutask-redis redis-cli ping   # PONG 출력되면 정상
 - **👥 회원 관리**: http://localhost:8080/members
 - **📚 강의 등록**: http://localhost:8080/course-register
 - **📋 신청 현황**: http://localhost:8080/enrollment
-- **📖 API 문서**: http://localhost:8080/swagger-ui/index.html
 - **🗄️ H2 콘솔**: http://localhost:8080/h2-console
   - JDBC URL: `jdbc:h2:tcp://localhost:9092/mem:testdb`
   - Username: `sa`
   - Password: (비어있음)
+
+## 🏗️ 시스템 아키텍처
+
+### 📊 하이브리드 랭킹 시스템
+```
+🎯 ZSet 기반 실시간 랭킹 (1-40위)
+├── Redis ZSet: 실시간 정렬 (신청자 많은순, 신청률 높은순)
+├── DB 페이징: 40위 이후 일반 페이징
+└── 하이브리드: Redis + DB 조합으로 성능 최적화
+
+📈 랭킹 계산 로직
+├── 신청자 많은순: current_students DESC
+├── 신청률 높은순: (current_students / max_students) DESC
+└── 실시간 업데이트: 수강신청/취소 시 즉시 반영
+```
+
+### ⚡ 비동기 처리 아키텍처
+```
+🚀 하이브리드 수강신청 처리 과정
+
+1️⃣ Redis Lua Script (동기)
+   ├── 동시성 제어: 원자적 정원 확인
+   ├── 중복 신청 방지: 학생-강의 조합 체크
+   └── 즉시 성공/실패 판단
+
+2️⃣ 핵심 DB 저장 (동기)
+   ├── Enrollment 엔티티 저장
+   ├── enrollmentId 즉시 확보
+   └── 후속 비즈니스 로직 처리 가능
+
+3️⃣ 클라이언트 응답 (즉시 완료)
+   ├── 실제 Enrollment 객체로 응답
+   ├── enrollmentId 포함된 완전한 데이터
+   └── 즉시 후속 처리 가능 (이메일, 결제 등)
+
+4️⃣ 비동기 최적화 처리 (백그라운드)
+   ├── @Async("enrollmentTaskExecutor") 실행
+   ├── Course.currentStudents 업데이트
+   └── Redis ZSet 랭킹 업데이트
+
+5️⃣ 장애 격리 및 복구
+   ├── 비동기 작업 실패 시 로그 기록
+   ├── 스케줄러가 1분마다 데이터 보정
+   └── 최종 일관성 보장
+```
+
+### 🔄 Redis-DB 하이브리드 시스템
+```
+📊 실시간 데이터 흐름
+├── 🎯 수강신청 시
+│   ├── Redis: Lua Script로 원자적 처리
+│   ├── DB: current_students 실시간 업데이트
+│   └── ZSet: 랭킹 데이터 실시간 반영
+├── 🔄 스케줄러 (1분마다)
+│   ├── Redis 활성 키 스캔
+│   ├── DB 실제 데이터와 비교
+│   └── 불일치 시 자동 보정
+└── 🗄️ 데이터 정합성
+    ├── TTL: 2분 자동 만료
+    ├── 분산 락: 중복 실행 방지
+    └── 배치 업데이트: 초기화 시 효율적 처리
+```
+
+### 🏗️ 프로젝트 구조
+```
+📁 계층화 아키텍처 (Layered Architecture)
+├── controller/     # 표현 계층 (API 엔드포인트)
+├── service/        # 애플리케이션 계층 (비즈니스 로직)
+├── repository/     # 인프라 계층 (데이터 접근)
+├── entity/         # 도메인 모델 (JPA 엔티티)
+├── dto/           # 데이터 전송 객체
+├── config/        # 설정 클래스
+└── exception/     # 예외 처리
+
+🎯 주요 컴포넌트
+├── CourseController: 강의 관리 API
+├── MemberController: 회원 관리 API
+├── EnrollmentController: 수강신청 API
+├── CourseService: 강의 비즈니스 로직
+├── MemberService: 회원 비즈니스 로직
+├── EnrollmentService: 수강신청 비즈니스 로직
+├── RedisConcurrencyService: Redis 동시성 제어
+└── CourseRankingService: 랭킹 시스템 관리
+```
 
 ## 🎯 주요 기능
 
@@ -171,7 +177,7 @@ docker exec wb-edutask-redis redis-cli ping   # PONG 출력되면 정상
 
 ### 📚 강의 등록
 - **강의 정보 입력**: 제목, 설명, 기간, 정원, 가격
-- **유효성 검증**: 실시간 입력값 검증
+- **유효성 검증**: 실시간 입력값 검증 (가격: 0원~1,000만원)
 - **강사 선택**: 등록된 강사 목록에서 선택
 
 ### 📋 신청 현황
@@ -311,7 +317,9 @@ curl -X GET "http://localhost:8080/api/v1/courses?page=0&size=5&sort=applicants"
 
 ## 🗄️ 데이터베이스 스키마
 
-### 📊 ERD (Entity Relationship Diagram)
+<details>
+<summary><strong>📊 ERD (Entity Relationship Diagram)</strong></summary>
+
 ```
 ┌─────────────────┐
 │     MEMBERS     │  ◄─────────┐
@@ -331,7 +339,10 @@ curl -X GET "http://localhost:8080/api/v1/courses?page=0&size=5&sort=applicants"
 └─────────────────┘    └─────────────────┘
 ```
 
-### 🏗️ 테이블 구조
+</details>
+
+<details>
+<summary><strong>🏗️ 테이블 구조</strong></summary>
 
 #### 1. MEMBERS (회원)
 ```sql
@@ -362,6 +373,7 @@ CREATE TABLE courses (
     instructor_id BIGINT NOT NULL,
     current_students INTEGER NOT NULL DEFAULT 0,
     max_students INTEGER NOT NULL CHECK (max_students BETWEEN 1 AND 100),
+    price INTEGER NOT NULL,
     start_date DATE,
     end_date DATE,
     status VARCHAR(20) NOT NULL DEFAULT 'SCHEDULED',
@@ -377,6 +389,7 @@ CREATE TABLE courses (
 **제약조건:**
 - `course_name`: 필수, 최대 100자
 - `max_students`: 1-100명 범위
+- `price`: 0원 이상
 - `current_students`: Redis와 동기화되는 실시간 수강인원
 - `status`: SCHEDULED(개설예정), IN_PROGRESS(진행중), COMPLETED(종료), CANCELLED(취소)
 - **외래키 제약조건 제거**: 성능 최적화를 위해 NO_CONSTRAINT 설정
@@ -406,7 +419,10 @@ CREATE TABLE enrollments (
 - `status`: APPLIED(신청), APPROVED(승인), CANCELLED(취소), REJECTED(거절)
 - **외래키 제약조건 제거**: 성능 최적화를 위해 NO_CONSTRAINT 설정
 
-### 🚀 인덱스 전략
+</details>
+
+<details>
+<summary><strong>🚀 인덱스 전략</strong></summary>
 
 #### 성능 최적화 인덱스
 ```sql
@@ -428,6 +444,8 @@ CREATE UNIQUE INDEX uk_member_phone ON members (phone_number);
 - **복합 인덱스 우선**: 자주 함께 사용되는 컬럼들 조합
 - **정렬 최적화**: ORDER BY 절에 사용되는 컬럼들
 - **조인 최적화**: 외래키 역할을 하는 컬럼들
+
+</details>
 
 ### ⚡ 비동기 처리 아키텍처
 
@@ -608,6 +626,349 @@ netstat -an | grep 9092
 - ✅ **실시간 업데이트**: 수강신청 즉시 반영
 - ✅ **무한 스크롤**: 페이징 기반 더보기
 - ✅ **검색 및 필터링**: 다양한 조건 지원
+
+## ⚠️ 현재 프로젝트의 한계점
+
+### 🏗️ 아키텍처 한계
+
+#### **계층화 아키텍처의 단점**
+- **기술 중심적 구조**: Controller → Service → Repository 계층으로 비즈니스 로직이 Service 계층에 분산
+- **도메인 로직 분산**: 비즈니스 규칙이 여러 Service 클래스에 흩어져 있어 유지보수 어려움
+- **강한 결합**: 계층 간 의존성이 강해 변경 시 여러 계층 수정 필요
+- **테스트 복잡성**: Service 계층의 비즈니스 로직 테스트 시 의존성 주입이 복잡
+
+#### **현재 프로젝트 구조의 문제점**
+```
+📁 현재 구조 (계층화 아키텍처)
+├── controller/     # 표현 계층 (API 엔드포인트)
+├── service/        # 애플리케이션 계층 (비즈니스 로직 분산)
+├── repository/     # 인프라 계층 (데이터 접근)
+├── entity/         # 도메인 모델 (단순 데이터 구조)
+└── dto/           # 데이터 전송 객체
+
+❌ 문제점:
+- 비즈니스 로직이 Service 계층에 분산
+- Entity가 단순한 데이터 구조로 비즈니스 규칙 표현 부족
+- 도메인 변경 시 여러 계층 수정 필요
+```
+
+### 🔧 기술적 한계
+
+#### **도메인 모델의 한계**
+- **단순한 Entity**: 비즈니스 로직이 없는 단순한 데이터 구조
+- **비즈니스 규칙 분산**: Service 계층에 비즈니스 규칙이 흩어져 있음
+- **일관성 부족**: 관련된 데이터의 일관성 보장이 어려움
+
+#### **확장성 제약**
+- **기능 추가 시 복잡성**: 새로운 비즈니스 규칙 추가 시 여러 Service 수정 필요
+- **테스트 어려움**: 비즈니스 로직이 Service에 분산되어 단위 테스트 복잡
+- **코드 중복**: 유사한 비즈니스 로직이 여러 Service에 중복
+
+<details>
+<summary><strong>📊 구체적인 한계 사례</strong></summary>
+
+#### **1. 수강신청 비즈니스 로직 분산**
+```java
+// 현재: 비즈니스 로직이 Service에 분산
+@Service
+public class EnrollmentService {
+    public Enrollment enrollStudent(Long studentId, Long courseId) {
+        // 1. Course 조회
+        Course course = courseRepository.findById(courseId);
+        
+        // 2. Student 조회
+        Student student = studentRepository.findById(studentId);
+        
+        // 3. 비즈니스 로직이 Service에 분산
+        if (course.getCurrentStudents() >= course.getMaxStudents()) {
+            throw new CourseCapacityExceededException("정원 초과");
+        }
+        
+        if (enrollmentRepository.existsByStudentIdAndCourseId(studentId, courseId)) {
+            throw new DuplicateEnrollmentException("중복 신청");
+        }
+        
+        // 4. 개별 저장
+        course.setCurrentStudents(course.getCurrentStudents() + 1);
+        courseRepository.save(course);
+        enrollmentRepository.save(enrollment);
+        
+        return enrollment;
+    }
+}
+```
+
+#### **2. 도메인 모델의 단순함**
+```java
+// 현재: 단순한 데이터 구조
+@Entity
+public class Course {
+    @Id
+    private Long id;
+    private String courseName;
+    private Integer currentStudents;
+    private Integer maxStudents;
+    private Integer price;
+    
+    // 단순한 getter/setter만 존재
+    // 비즈니스 로직 없음
+}
+```
+
+#### **3. 변경 시 여러 계층 수정 필요**
+```java
+// 새로운 비즈니스 규칙 추가 시
+// 1. Service 계층 수정
+@Service
+public class EnrollmentService {
+    public Enrollment enrollStudent(Long studentId, Long courseId) {
+        // 기존 로직...
+        
+        // 새로운 비즈니스 규칙 추가
+        if (!hasCompletedPrerequisites(studentId, courseId)) {
+            throw new PrerequisiteNotMetException("선수과목 미이수");
+        }
+        
+        // 2. CourseService도 수정 필요
+        // 3. MemberService도 수정 필요
+        // 4. 여러 테스트 클래스 수정 필요
+    }
+}
+```
+
+</details>
+
+### 🚀 개선 방향
+
+#### **DDD(Domain-Driven Design) 적용 필요**
+- **도메인 중심 설계**: 비즈니스 로직을 도메인 모델에 집중
+- **애그리게이트 패턴**: 관련 엔티티들을 하나의 단위로 관리
+- **값 객체**: 비즈니스 규칙을 코드로 표현
+- **도메인 이벤트**: 느슨한 결합과 확장성 확보
+
+#### **CQRS 패턴 도입**
+- **Command**: 쓰기 작업 최적화
+- **Query**: 읽기 작업 최적화
+- **이벤트 소싱**: 상태 변경 이력 관리
+
+#### **마이크로서비스 전환**
+- **도메인별 서비스 분리**: Course, Member, Enrollment 서비스
+- **API Gateway**: 서비스 간 통신 관리
+- **이벤트 기반 통신**: Kafka를 통한 느슨한 결합
+
+### 🐛 버그 최소화를 위한 개선 방안
+
+<details>
+<summary><strong>1. DDD 적용으로 비즈니스 규칙 명확화</strong></summary>
+
+**현재 문제점**: 비즈니스 로직이 Service에 분산되어 버그 발생 가능
+
+**개선 방안**: 도메인 모델에 비즈니스 규칙 집중
+
+```java
+// 현재: 비즈니스 로직이 Service에 분산되어 버그 발생 가능
+@Service
+public class EnrollmentService {
+    public Enrollment enrollStudent(Long studentId, Long courseId) {
+        // 비즈니스 로직이 여러 곳에 분산
+        if (course.getCurrentStudents() >= course.getMaxStudents()) {
+            throw new CourseCapacityExceededException("정원 초과");
+        }
+        // 일관성 문제 발생 가능
+    }
+}
+
+// 개선: 도메인 모델에 비즈니스 규칙 집중
+@Entity
+public class Course {
+    private CourseCapacity capacity;
+    private List<Enrollment> enrollments;
+    
+    public boolean canEnroll(Student student) {
+        return capacity.hasAvailableSlots() && 
+               !isAlreadyEnrolled(student) &&
+               student.hasCompletedPrerequisites(this);
+    }
+    
+    public void enrollStudent(Student student) {
+        if (!canEnroll(student)) {
+            throw new CourseEnrollmentException("수강신청이 불가능합니다.");
+        }
+        // 비즈니스 규칙이 도메인 모델에 집중
+    }
+}
+```
+
+</details>
+
+<details>
+<summary><strong>2. 값 객체로 불변성 보장</strong></summary>
+
+**현재 문제점**: 단순한 Integer로 비즈니스 규칙 누락
+
+**개선 방안**: 값 객체로 불변성 보장
+
+```java
+// 현재: 단순한 Integer로 비즈니스 규칙 누락
+@Entity
+public class Course {
+    private Integer currentStudents;
+    private Integer maxStudents;
+    // 비즈니스 규칙이 코드에 표현되지 않음
+}
+
+// 개선: 값 객체로 불변성 보장
+@Embeddable
+public class CourseCapacity {
+    private final Integer currentStudents;
+    private final Integer maxStudents;
+    
+    public CourseCapacity(Integer maxStudents) {
+        if (maxStudents < 1 || maxStudents > 100) {
+            throw new IllegalArgumentException("수강 정원은 1-100명이어야 합니다.");
+        }
+        this.maxStudents = maxStudents;
+        this.currentStudents = 0;
+    }
+    
+    public CourseCapacity increment() {
+        if (currentStudents >= maxStudents) {
+            throw new CourseCapacityExceededException("정원이 초과되었습니다.");
+        }
+        return new CourseCapacity(maxStudents, currentStudents + 1);
+    }
+    // 불변성 보장으로 버그 방지
+}
+```
+
+</details>
+
+<details>
+<summary><strong>3. 애그리게이트 단위 트랜잭션</strong></summary>
+
+**현재 문제점**: 개별 저장으로 일관성 문제 발생 가능
+
+**개선 방안**: 애그리게이트 단위로 일관성 보장
+
+```java
+// 현재: 개별 저장으로 일관성 문제 발생 가능
+@Service
+public class EnrollmentService {
+    public Enrollment enrollStudent(Long studentId, Long courseId) {
+        // 개별 저장으로 일관성 문제
+        course.setCurrentStudents(course.getCurrentStudents() + 1);
+        courseRepository.save(course);
+        enrollmentRepository.save(enrollment);
+    }
+}
+
+// 개선: 애그리게이트 단위로 일관성 보장
+@Transactional
+public EnrollmentId enrollStudent(EnrollStudentCommand command) {
+    Course course = courseRepository.findById(command.getCourseId());
+    Student student = studentRepository.findById(command.getStudentId());
+    
+    // 애그리게이트 내부에서 일관성 보장
+    course.enrollStudent(student);
+    
+    // 애그리게이트 단위로 저장
+    courseRepository.save(course);
+    
+    return course.getLastEnrollment().getId();
+}
+```
+
+</details>
+
+<details>
+<summary><strong>4. 도메인 이벤트로 일관성 보장</strong></summary>
+
+**개선 방안**: 도메인 이벤트로 느슨한 결합과 일관성 보장
+
+```java
+// 개선: 도메인 이벤트로 느슨한 결합과 일관성 보장
+@Entity
+public class Course {
+    public void enrollStudent(Student student) {
+        // 비즈니스 로직 처리
+        capacity.incrementCurrentStudents();
+        enrollments.add(new Enrollment(student, this));
+        
+        // 도메인 이벤트 발행
+        DomainEventPublisher.publish(new StudentEnrolledEvent(this, student));
+    }
+}
+
+@EventHandler
+public class CourseEventHandler {
+    @EventListener
+    public void handle(StudentEnrolledEvent event) {
+        // 랭킹 시스템에 자동 반영
+        courseRankingService.updateRanking(event.getCourseId());
+        
+        // 이메일 알림 발송
+        notificationService.sendEnrollmentConfirmation(event.getStudentId());
+    }
+}
+```
+
+</details>
+
+<details>
+<summary><strong>5. 테스트 용이성 향상</strong></summary>
+
+**현재 문제점**: 많은 의존성으로 테스트 복잡
+
+**개선 방안**: 도메인 모델 단위 테스트
+
+```java
+// 현재: 많은 의존성으로 테스트 복잡
+@SpringBootTest
+class EnrollmentServiceTest {
+    @MockBean
+    private CourseRepository courseRepository;
+    @MockBean
+    private MemberRepository memberRepository;
+    @MockBean
+    private EnrollmentRepository enrollmentRepository;
+    @MockBean
+    private CourseRankingService courseRankingService;
+    @MockBean
+    private RedisConcurrencyService redisConcurrencyService;
+    // 복잡한 Mock 설정
+}
+
+// 개선: 도메인 모델 단위 테스트
+@Test
+class CourseTest {
+    @Test
+    void 수강신청_가능한_강의에서_학생_등록_성공() {
+        // Given
+        Course course = Course.builder()
+            .capacity(CourseCapacity.of(30))
+            .status(CourseStatus.SCHEDULED)
+            .build();
+        
+        Student student = Student.builder()
+            .id(StudentId.of(1L))
+            .build();
+        
+        // When & Then
+        assertThat(course.canEnroll(student)).isTrue();
+        course.enrollStudent(student);
+        assertThat(course.getCurrentStudents()).isEqualTo(1);
+    }
+}
+```
+
+</details>
+
+#### **6. 코드 품질 향상 효과**
+- **버그 감소**: 비즈니스 규칙이 도메인 모델에 집중되어 누락 방지
+- **일관성 보장**: 애그리게이트 단위 트랜잭션으로 데이터 일관성 확보
+- **테스트 용이성**: 도메인 모델 단위 테스트로 테스트 작성 간소화
+- **가독성 향상**: 비즈니스 규칙이 코드에 명확하게 표현
+- **유지보수성**: 도메인 변경 시 도메인 계층만 수정하면 됨
 
 ## 🔮 향후 개발 계획
 
